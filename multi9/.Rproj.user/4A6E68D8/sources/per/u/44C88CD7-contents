@@ -1,0 +1,138 @@
+rm(list = ls())
+# Parámetros de la distribución Beta
+alpha <- 70
+beta <- 100
+a <- 6
+b <- 14
+
+# Función de transformación de Beta(α, β) a intervalo [a, b]
+transform_beta <- function(x, a, b) {
+  a + (b - a) * x
+}
+
+# Desviación estándar poblacional real (de X_real)
+var_beta <- function(alpha, beta) {
+  (alpha * beta) / ((alpha + beta)^2 * (alpha + beta + 1))
+}
+sd_beta <- sqrt(var_beta(alpha, beta)) * (b - a)
+
+# Simulación
+
+n_sim <- 1000
+sample_sizes <- seq(10, 1000, by = 10)
+sd_estimates <- sapply(sample_sizes, function(n) {
+  x <- rbeta(n, alpha, beta)
+  x_real <- transform_beta(x, a, b)
+  sd(x_real)
+})
+
+# Gráfico
+plot(sample_sizes, sd_estimates, type = "l", col = "blue",
+     xlab = "Tamaño de muestra", ylab = "Desviación estándar muestral",
+     main = "Convergencia de SD muestral a SD poblacional")
+abline(h = sd_beta, col = "red", lty = 2)
+legend("topright", legend = c("Estimación muestral", "SD poblacional"),
+       col = c("blue", "red"), lty = c(1, 2))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Parámetros de la distribución Gamma
+r <- 2   # forma
+lambda <- 1  # escala
+
+# Parámetros de la transformación
+alpha <- 6
+b <- 14
+
+# Número de simulaciones
+n_simulations <- 10000
+n_sample <- 100  # tamaño de la muestra
+
+# Generación de las muestras aleatorias de X (energía)
+set.seed(123)  # Para reproducibilidad
+X <- matrix(rgamma(n_simulations * n_sample, shape = r, scale = lambda), 
+            ncol = n_sample, nrow = n_simulations)
+
+# Aplicando la transformación T = alpha * X + b
+T <- alpha * X + b
+
+# Calcular la media de cada muestra T
+T_bar <- rowMeans(T)
+
+# Mostrar la distribución de T
+hist(T_bar, breaks = 30, main = "Distribución de T", xlab = "T", col = "lightblue", border = "black")
+
+# Mostrar la distribución de la media
+mean(T_bar)
+sd(T_bar)
+
+# Graficar la distribución exacta y la distribución límite de T (media muestral)
+# Asumimos que la media de T se aproxima a la distribución normal debido al teorema central del límite
+
+# Agregar una curva normal para la distribución límite de T
+curve(dnorm(x, mean = mean(T_bar), sd = sd(T_bar)), col = "red", add = TRUE)
+
+# Mostrar valores teóricos
+mean_theoretical <- alpha * r * lambda + b
+sd_theoretical <- sqrt(r * lambda^2) * alpha
+
+cat("Media teórica de T: ", mean_theoretical, "\n")
+cat("Desviación estándar teórica de T: ", sd_theoretical, "\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+set.seed(100)
+
+# Parámetros
+alpha <- 0.05
+mu <- 3
+delta <- 2
+n <- 90
+
+# Simulación de muestra de tamaño 90 de una exponencial desplazada
+X <- rexp(n, rate = 1/mu) + delta
+
+# Método empírico (mínimo)
+delta_hat_emp <- min(X)
+limite_superior_emp <- delta_hat_emp + mu * log(1 / alpha)
+cat("Intervalo por método empírico:\n")
+cat("[", round(delta_hat_emp, 3), ",", round(limite_superior_emp, 3), "]\n")
+
+# Método usando el máximo
+delta_hat_max <- max(X) - mu * log(n)
+limite_inferior_max <- delta_hat_max
+limite_superior_max <- max(X)
+cat("Intervalo usando el máximo:\n")
+cat("[", round(limite_inferior_max, 3), ",", round(limite_superior_max, 3), "]\n")

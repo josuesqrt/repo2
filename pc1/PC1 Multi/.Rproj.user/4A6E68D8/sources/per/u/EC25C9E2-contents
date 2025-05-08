@@ -1,0 +1,138 @@
+# Pregunta 2
+Datos<-read.csv("MLII_PD_Clase_05_Datos01.csv",header=TRUE,sep=";")
+attach(Datos) 
+X = model.matrix (Y_Total~ . , Datos) [, -1 ] 
+y = Datos$Y_Total 
+
+#  Ajuste a la regresión lineal múltiple (mínimos cuadrados) 
+Modelo=lm(Y_Total~. , Datos) 
+summary(Modelo) 
+R2=summary(Modelo)$r.squared; R2
+
+# Análisis de la multicolinealidad 
+n=dim(X)[1]; p=dim(X)[2] 
+# Examinar matriz de correlaciones 
+round(cor(X), 3) 
+
+# Examinar los factores de inflación de variancia (VIF) 
+library(faraway)
+vif(Modelo)
+
+#  Examinar valores propios 
+XX=t(X)%*%X 
+Lambda=eigen(XX)$values; Lambda
+
+#  Calcular el índice k 
+k=max(Lambda)/min(Lambda); k [1] 
+#  Calcular el índice k por predictor 
+for (i in 1:p) {
+  cat("kj: ",i, " = ", max(Lambda)/Lambda[i],"\n") 
+} 
+
+# Pregunta 3
+library(glmnet) 
+#  Ajuste a la regresión Ridge 
+Modelo_R=glmnet(X, y, alpha=0) 
+plot(Modelo_R, xvar="lambda", label=TRUE) 
+#  Seleccionando el mejor lambda (óptimo) 
+#  Usando la validación cruzada 
+set.seed(1000) 
+cv.Ridge=cv.glmnet(X, y, alpha=0, nfolds=10, type.measure="mse") 
+plot(cv.Ridge) 
+cv.Ridge$lambda.min  #  Lambda que consigue el mínimo test-error
+
+# Lambda óptimo para el test-error con 1 sd 
+cv.Ridge$lambda.1se 
+
+# Estimación de coeficientes con el lambda óptimo 
+Modelo_R_Final=glmnet(X, y, alpha=0, lambda= cv.Ridge$lambda.1se) 
+round(coef(Modelo_R_Final),3) 
+
+#  Estimaciones Ridge para varios valores de lambda 
+M1<-glmnet(X,y,alpha=0,lambda=0.9) 
+M2<-glmnet(X,y,alpha=0,lambda=10) 
+M3<-glmnet(X,y,alpha=0,lambda=100) 
+M4<-glmnet(X,y,alpha=0,lambda=1000) 
+M5<-glmnet(X,y,alpha=0,lambda=10000) 
+cbind(round(coef(M1),3),round(coef(M2),3),round(coef(M3),3),round(coef(M4),3),round(coef(M5),3)) 
+
+# Pregunta 4
+#  Métodos de selección de variables 
+#  Selección de variables: Medidas de bondad de ajuste 
+library(leaps)
+Modelo_S<-regsubsets(Y_Total~., data=Datos, nvmax=15) 
+names(summary(Modelo_S))#  Medidas para la selección de modelos
+
+# Identificar el modelo con mayor: rsq, rss, adjr2 y cp  
+ID<-which.max(summary(Modelo_S)$rsq);ID
+summary(Modelo_S)$rsq[ID]
+round(coef(object=Modelo_S, id=15),3)
+
+ID=which.max(summary(Modelo_S)$rss); ID
+summary(Modelo_S)$rss[ID] 
+round(coef(object=Modelo_S, id=ID),3) 
+
+ID=which.max(summary(Modelo_S)$adjr2); ID 
+summary(Modelo_S)$adjr2[ID]
+round(coef(object=Modelo_S, id=ID),3) 
+
+ID=which.max(summary(Modelo_S)$cp); ID
+summary(Modelo_S)$cp[ID]
+round(coef(object=Modelo_S, id=ID),3) 
+
+#  Selección de variables: Métodos Forward, Backward y Stepwise 
+# Identificar el modelo con mayor R2 con el método Backward 
+Modelo_B<-regsubsets(Y_Total~., data=Datos, nvmax=15, method="backward") 
+ID=which.max(summary(Modelo_B)$adjr2); ID 
+round(coef(object=Modelo_B, id=ID),3) 
+summary(Modelo_B)
+
+# Identificar el modelo con mayor R2 con el método Forward 
+Modelo_F<-regsubsets(Y_Total~.,data=Datos, nvmax=15, method="forward") 
+ID=which.max(summary(Modelo_F)$adjr2); ID [1] 
+round(coef(object=Modelo_F, id=ID),3) 
+
+# Pregunta 5
+#  Ajuste a la regresión Lasso >library(glmnet) 
+X = model.matrix (Y_Total~ . , Datos) [, -1 ] 
+# separar la última columna 
+y = Datos$Y_Total 
+Modelo_L=glmnet(X, y, alpha=1) 
+plot(Modelo_L, xvar="lambda", label=TRUE) 
+#  Seleccionando el major lambda (óptimo)  
+set.seed(1000) 
+cv.Lasso=cv.glmnet(X, y, alpha=1, nfolds=10, type.measure="mse") 
+
+plot(cv.Lasso) 
+cv.Lasso$lambda.min 
+cv.Lasso$lambda.1se 
+
+#  Seleccionar el modelo con el lambda óptimo 
+Modelo_L_Final=glmnet(X, y, alpha=1, lambda= cv.Lasso$lambda.1se) 
+round(coef(Modelo_L_Final),3) 
+deviance(Modelo_L_Final) # Asi se encuentra la deviance
+
+# Pregunta 6
+#  P6. Comparación de los modelos estimados (No funciona) 
+Datos_N<-data.frame(X1_A_Vegetal=c(80765,139216),
+                    X2_Manteca=c(56207,50904),
+                    X3_Margarina =c(14297,13162),
+                    X4_Avena=c(21668,21207),
+                    X5_Cacao=c(4216,3897),
+                    X6_Cocoa=c(3635, 3109),
+                    X7_Queso=c(6474,8519),
+                    X8_Mantequilla=c(1012,1328),
+                    X9_Ahumada=c(1068,1111 ),
+                    X10_Chorizo=c(1369,1454),
+                    X11_Hot_Dog=c(10337,12145),
+                    X12_Jamon=c(2950,3035),
+                    X13_Jamonada=c(6987,8315),
+                    X14_Mortadela=c(955,1368),
+                    X15_Pate=c(304,306)) 
+Y_Real=c(4683914,4939216) 
+Periodos=c(2019, 2020) 
+Prediccion_M=predict(Modelo, new=Datos_N, type="response") 
+Prediccion_R_Final=predict(Modelo_R_Final, newx=as.matrix(Datos_N), type="response") 
+Prediccion_L_Final=predict(Modelo_L_Final, newx=as.matrix(Datos_N), type="response") 
+cbind(Periodos, Y_Real, Prediccion_M,Prediccion_R_Final,Prediccion_L_Final)
+cbind(Periodos, abs(Y_Real-Prediccion_M), abs(Y_Real-Prediccion_R_Final), abs(Y_Real-Prediccion_L_Final)) 

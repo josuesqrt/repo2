@@ -1,0 +1,8 @@
+"0","# Lista de variables cuantitativas relacionadas con los moluscos"
+"0","quantitative_vars_moluscos <- c(""Longitud"", ""Diametro"", ""Altura"", ""PesoE"", ""PesoD"", ""PesoV"", ""PesoC"")"
+"0",""
+"0","# Estandarizar solo las variables cuantitativas de los moluscos"
+"0","Ya[quantitative_vars_moluscos] <- scale(Ya[quantitative_vars_moluscos])"
+"0",""
+"0","# Verifica las primeras filas del dataframe estandarizado"
+"0","head(Ya)"

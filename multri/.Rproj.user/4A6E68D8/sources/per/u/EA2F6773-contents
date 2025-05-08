@@ -1,0 +1,143 @@
+# Entrada de datos
+# Modo Facil
+Datos <- read.table("MLII_PD_Clase_02_Datos01.csv", header = TRUE, sep = ";")
+attach(Datos)
+X_Datos <- as.matrix(Datos)
+n <- dim(X_Datos)[1]
+p <- dim(X_Datos)[2]
+X <- X_Datos[, 1:(p - 1)]
+y <- X_Datos[, p:p]
+p <- p - 1
+W <- matrix(0, nrow = n, ncol = n)
+
+# Estimación de los coeficientes y la ecuación estimada
+Modelo1 <- glm(y ~ X[, -1], family = poisson(link = log))
+summary(Modelo1)
+
+# Cálculo de las medidas de bondad de ajuste
+l_bmax <- sum(y * log(y) - y - log(factorial(y))); l_bmax
+b <- coef(Modelo1)
+Xb <- X %*% b
+yest <- exp(Xb); yest
+l_b <- sum(y * log(yest) - yest - log(factorial(y))); l_b
+
+Ajustado <- fitted(Modelo1); Ajustado
+
+# Cálculo de la Deviance
+D <- 2 * (l_bmax - l_b); D
+D <- 2 * sum(y * log(y / yest)); D# (Usando la fórmula)
+
+# Cálculo de la Desviance Null o Modelo mínimo
+D_Null <- 2 * sum(y * log(y / mean(y))); D_Null
+glm(y~1,family=poisson(log))
+
+# Cálculo de AIC y BIC
+AIC <- 2 * p - 2 * l_b; AIC
+BIC <- log(n) * p - 2 * l_b; BIC
+
+# Cálculo de los residuales de Pearson y Deviance
+Ri <- (y - yest) / sqrt(yest); Ri
+Res_Per <- residuals(Modelo1, type = "pearson"); Res_Per
+
+Di <- y * log(y / yest); Di
+Res_Des <- residuals(Modelo1, type = "deviance");Res_Des
+
+# Cálculo de la estadística Chi-Cuadrado y la Deviance
+Chi <- sum(Ri * Ri); Chi
+Des <- 2 * sum(Di); Des
+
+# Cálculo del Coeficiente de determinación
+Desv_Residual=2*sum(y*log(y/yest)); Desv_Residual 
+Desv_Nulo=2*sum(y*log(y/mean(y))); Desv_Nulo
+R2=1-Desv_Residual/Desv_Nulo; R2
+R2 <- (1 - Modelo1$deviance / Modelo1$null.deviance) * 100; R2
+
+
+
+# Entrada de datos
+y <- c(10, 12, 14, 18, 20, 22, 26, 28, 10, 9, 8, 5, 6, 5, 4, 3)
+n <- c(28, 25, 24, 28, 32, 34, 38, 42, 28, 25, 24, 28, 32, 34, 38, 42)
+yy <- cbind(y, n - y)
+X1 <- c(2, 4, 8, 12, 16, 20, 24, 30, 2, 4, 8, 12, 16, 20, 24, 30)
+X2=c(1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0)
+X3=X1*X2
+
+# Modelo 1
+Modelo1 <- glm(yy ~ X1, family = binomial(link = logit))
+summary(Modelo1)
+
+# Cálculo de la deviance
+Pi <- fitted(Modelo1)
+Yest <- n * Pi
+D <- 2 * sum(y * log(y / Yest) + (n - y) * log((n - Yest) / (n - y))); D
+Pi
+Yest
+
+# Pruebas de hipótesis y cálculo del coeficiente de determinación
+Alfa <- 0.05
+Chi_Tab <- qchisq(1 - Alfa, Modelo1$df.residual); Chi_Tab
+p_valor <- 1 - pchisq(Modelo1$deviance, Modelo1$df.residual); p_valor
+
+R2 <- (1 - Modelo1$deviance / Modelo1$null.deviance) * 100; R2
+
+# Modelo 2
+Modelo2 <- glm(yy ~ X1 + X2, family = binomial(link = logit))
+summary(Modelo2)
+
+# Prueba de la deviance
+Alfa=0.05 
+Chi_Tab=qchisq(1-Alfa,Modelo2$df.residual); Chi_Tab
+p_valor=1-pchisq(Modelo2$deviance,Modelo2$df.residual); p_valor 
+R2= (1-Modelo2$deviance/Modelo2$null.deviance)*100; R2
+
+# Modelo 3
+Modelo3 <- glm(yy ~ X1 + X2 + X3, family = binomial(link = logit))
+summary(Modelo3)
+
+# Prueba de la deviance
+Alfa=0.05
+Chi_Tab=qchisq(1-Alfa,Modelo3$df.residual); Chi_Tab
+p_valor=1-pchisq(Modelo3$deviance,Modelo3$df.residual); p_valor 
+R2= (1-Modelo3$deviance/Modelo3$null.deviance)*100; R2 
+
+# Cálculo del coeficiente de determinación. 
+R2 <- (1 - Modelo3$deviance / Modelo3$null.deviance) * 100
+
+# Prueba de los coeficientes de regresión
+Zc=coef(summary(Modelo3))[,1]/coef(summary(Modelo3))[,2]; Zc
+Alfa=0.05
+Z_Tab=qnorm(1-Alfa,Zc); Z_Tab
+p_valor=(1-pnorm(abs(Zc),0,1))*2; round(p_valor,3)
+
+# Cálculo de AIC y BIC e los tres modelos 
+AIC_1 <- extractAIC(Modelo1)
+BIC_1 <- extractAIC(Modelo1, k = log(length(y)))
+AIC_2 <- extractAIC(Modelo2)
+BIC_2 <- extractAIC(Modelo2, k = log(length(y)))
+AIC_3 <- extractAIC(Modelo3)
+BIC_3 <- extractAIC(Modelo3, k = log(length(y)))
+
+cbind(AIC_1, BIC_1, AIC_2, BIC_2, AIC_3, BIC_3)
+
+# Selección del mejor modelo (Modelo reducido)
+M_X2X3 <- glm(yy ~ X2 + X3, family = binomial(link = logit))
+M_X1X3 <- glm(yy ~ X1 + X3, family = binomial(link = logit))
+M_X1X2 <- glm(yy ~ X1 + X2, family = binomial(link = logit))
+
+anova(M_X2X3, Modelo3, test = "Chisq")
+anova(M_X1X3, Modelo3, test = "Chisq")
+anova(M_X1X2, Modelo3, test = "Chisq")
+
+# Estimación del mejor modelo ajustado
+Modelo4 <- glm(yy ~ X1 + X3, family = binomial(link = logit))
+summary(Modelo4)
+R2= (1-Modelo4$deviance/Modelo4$null.deviance)*100; R2 
+
+NC=0.95
+confint.default(Modelo4, level=NC)
+
+# Métodos de selección de modelos
+Modelo3_F <- step(Modelo3, direction = "forward")
+Modelo3_B <- step(Modelo3, direction = "backward")
+Modelo3_FB <- step(Modelo3, direction = "both")
+

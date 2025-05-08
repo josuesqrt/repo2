@@ -1,0 +1,210 @@
+##############
+# Pregunta 1 #
+##############
+
+# Variable respuesta: Y = Producción de un porductor (1=Si_Aumento, 0=No_Aumento)
+# Variables predictoras:
+#   X1 = Tamaño del predio
+#   X2 = Fertiliza (1=Si, 0=No)
+#                             X3 = Baja  X4 = Media
+#   Tecnologia usada  Alta  =     0          0      (Referencial)
+#                     Baja  =     1          0
+#                     Media =     0          1
+#   X5 = Ingreso Agricola
+#   X6 = Ingreso pecuario
+# Componente aleatorio: Y ~ Binomial(n,pi)
+# Componente sistematico: n = XB = B0 + B1X1 + B2X2 + B3X3 + B4X4 + B5X5 + B6X6
+# Funcion de enlace: logit(logistico) 
+#   g(pi) = logit(pi) = log(pi/(1-pi)) = n = XB
+# Modelo de regresion logistico binario:
+#   P(Y=1) = pi = exp(XB)/(1 + exp(XB))
+# Modelo Logistico:
+# logit(P(Y=1)) = logit(pi) = log(pi/(1-pi)) = B0 + B1X1 + B2X2 + B3X3 + B4X4 + B5X5 + B6X6
+
+##############
+# Pregunta 2 #
+##############
+# Entrada de datos
+Datos<-read.table("MLII_PD_Clase_06_Datos01.csv",header=TRUE,sep=";")
+attach(Datos)
+#detach(Datos)
+str(Datos)
+# Se vuelven factores las variables "cha"
+Datos$X2_Fertiliza <- as.factor(Datos$X2_Fertiliza)
+Datos$X3_Tecnologia <- as.factor(Datos$X3_Tecnologia)
+Datos$Y_Produccion <- as.factor(Datos$Y_Produccion)
+
+# Estimación de los coeficientes de regresión
+Modelo1 <- glm(Y_Produccion~., data=Datos, family=binomial(link=logit))
+summary(Modelo1)
+
+# Modelo de regresion logistico binario estimado:
+# P(Y=1= = pi = exp(coef(Modelo1))/(1 + exp(coef(Modelo1)))
+
+
+##############
+# Pregunta 3 #
+##############
+
+# Prueba de significación del modelo de regresión
+Alfa=0.05
+Chi_Tab=qchisq(1-Alfa,Modelo1$df.residual); Chi_Tab
+p_valor=1-pchisq(Modelo1$deviance,Modelo1$df.residual); p_valor
+
+# Formulación de hipotesis
+# H0 : El modelo de regresion logistico binario se ajusta a los datos
+# H1 : El modelo de regresion logistico binario NO se ajusta a los datos
+
+# (Todo esto de del Residual deviance)
+# Prueba estadistica: D = Chi2c = (Residual deviance)   # D > Chi2() => Se rechaza Ho
+# Decision estadistica : Chi2(Alfa, degreed of freedom) = qchisq(1-Alfa, 833) = Chi_Tab => No se rechaza H0
+#                        p-valor = 1 - pchisq(Chi_Tab, degreed of freedom) = p_valor => No se rechaza H0
+# Conclusion: Con un nivel de significacion de 0.05, el modelo de regresion logistica binario () se ajusta a los datos
+
+# Coeficiente de determinación
+R2= (1-Modelo1$deviance/Modelo1$null.deviance)*100; R2
+# El modelo logístico binario estimado, mejora en un R2% para predecir si Y=1 en función del conjunto de variables predictoras.
+
+##############
+# Pregunta 5 #
+##############
+
+# Cálculo de los Odds Ratios
+exp(coef(Modelo1))
+# ORx1 = exp(B1) = ...>1 : Es ... veces mas probable que Y=1, cuando X1 aumente en 1 (X1: numerica)
+# ORx2 = exp(B2) = ...<1 : Es ... veces menos probable que Y=1, cuando X2=1 que cuando X2=0 (X2: 2 categorias)
+# ORx3(1) = exp(B3(1)) = ...>1 : Es ... veces mas probable que Y=1, cuando X3(1) en lugar de X3 (referencial) (X3: mas de 2 categoricas)
+
+
+##############
+# Pregunta 6 #
+##############
+
+# IC para los coeficientes y OR
+NC=0.95
+confint.default(Modelo1, level=NC)
+exp(confint.default(Modelo1, level=NC))
+
+##############
+# Pregunta 7 #
+##############
+
+# Predicción para nuevos productores
+Xo=c(1,8,1,1,0,768,577); P_Xo=sum(Xo*coef(Modelo1)); P=1/(1+exp(-(P_Xo))); P
+Xo=c(1,6,0,1,0,809,579); P_Xo=sum(Xo*coef(Modelo1)); P=1/(1+exp(-(P_Xo))); P
+Xo=c(1,3,0,0,1,1008,569); P_Xo=sum(Xo*coef(Modelo1)); P=1/(1+exp(-(P_Xo))); P
+Xo=c(1,3,1,0,0,1358,512); P_Xo=sum(Xo*coef(Modelo1)); P=1/(1+exp(-(P_Xo))); P
+Xo=c(1,4,1,0,0,961,599); P_Xo=sum(Xo*coef(Modelo1)); P=1/(1+exp(-(P_Xo))); P
+
+# Criterio: 
+#   Si Pi >= 0.5; entonces Y = 1 ()
+#   Si Pi < 0.5 : entonces Y = 0 ()
+
+##############
+# Pregunta 8 #
+##############
+
+# Regresión logística para la clasificación
+f=table(Datos$Y_Produccion); fr=round(prop.table(f)*100,1)
+Tabla=as.data.frame(cbind(f,fr)); Tabla
+
+# Dividir la base de datos: Entrenamiento (70%) y Prueba (30%)
+set.seed(100)
+indice <- sample(2, nrow(Datos), replace = TRUE, prob = c(0.7, 0.3))
+Datos_E <- Datos[indice == 1,] #Datos para el entrenamiento (70%)
+Datos_P <- Datos[indice == 2,] #Datos para la prueba (30%)
+f=table(Datos_E$Y_Produccion); fr=round(prop.table(f)*100,1)
+Tabla_E=as.data.frame(cbind(f,fr)); Tabla_E
+f=table(Datos_P$Y_Produccion); fr=round(prop.table(f)*100,1)
+Tabla_P=as.data.frame(cbind(f,fr)); Tabla_P
+
+# Regresión logística binaria con datos de entrenamiento
+Modelo1_1<-glm(Y_Produccion~X1_Tamano_Predio+X2_Fertiliza+X3_Tecnologia+X4_Ing_Agricola+X5_Ing_Pecuario,
+               data=Datos_E, family=binomial(link=logit))
+summary(Modelo1_1)
+exp(coef(Modelo1_1))
+
+# Elaboración de la Tabla de confusión (R considera: Si Pi<=0.5, Y=1)
+Prediccion <-predict(Modelo1_1, Datos_P, type="response")
+Pred=rep("No_Aumento", length(Prediccion))
+Pred[Prediccion>=0.5]= "Si_Aumento"
+Tabla_Conf=table(Datos_P$Y_Produccion, Pred,dnn=c("Observado:"," Predecido:"))
+Tabla_Conf # Vp es cuando Y=1(Observado) se encuentra con Y=1 (Predecido), por eso se cambio el codigo de abajo.
+
+# Métricas para medir la precisión de un clasificador
+VP=Tabla_Conf[2,2]; FN=Tabla_Conf[2,1]; FP=Tabla_Conf[1,2]; VN=Tabla_Conf[1,1]; N=VP+FN+FP+VN
+TA=((VP+VN)/N)*100; round(TA,1) #El TA% del total de los Y, la regresión logística binaria los predice correctamente en Y que Y=1 o Y=0
+TE=((FN+FP)/N)*100; round(TE,1) # ... la regresión logística binaria los predice incorrectamente en ...
+TVP=(VP/(VP+FN))*100; round(TVP,1) # El TVP% de los productores que Y=1, la regresión logística binaria los predice correctamente.
+TVN=(VN/(FP+VN))*100; round(TVN,1) # ... Y=0, la regresión logística binaria los predice correctamente.
+TFP=(FN/(VP+FN))*100; round(TFP,1) # El TFP% de los productores que Y=1, la regresión logística binaria los predice incorrectamente como Y que Y=0.
+TFN=(FP/(VN+FP))*100; round(TFN,1) # ... Y=0, la regresión logística binaria los predice incorrectamente.
+PP=(VP/(VP+FP))*100; round(PP,1) # El PP% de los Y que predice la regresión logística binaria como Y que Y=1.
+PN=(VN/(VN+FN))*100; round(PN,1) # ... la regresión logística binaria como Y que Y=0.
+
+##############
+# Pregunta 9 #
+##############
+
+# Predicción de nuevos datos
+Datos_N<-read.table("MLII_PD_Clase_06_Datos01_Nuevos.csv",header=TRUE,sep=";")
+attach(Datos_N)
+Prediccion_N <-predict(Modelo1_1, Datos_N, type="response")
+Pred_N=rep("No_Aumento", length(Prediccion_N))
+Pred_N[Prediccion_N>=0.5]= "Si_Aumento"
+Tabla_N=as.data.frame(cbind(Prediccion_N,Pred_N)); Tabla_N
+
+###############
+# Pregunta 10 #
+###############
+
+# Lectura de datos
+Datos<-read.table("MLII_PD_Clase_06_Datos01.csv",header=TRUE,sep=";")
+attach(Datos)
+str(Datos)
+# Estimación de los coeficientes de regresión
+Modelo2<-glm(Y_Produccion~X1_Tamano_Predio+X2_Fertiliza+X3_Tecnologia+X4_Ing_Agricola+X
+             5_Ing_Pecuario,family=binomial(link=probit))
+summary(Modelo2)
+
+# Prueba de significación del modelo de regresión
+Alfa=0.05
+Chi_Tab=qchisq(1-Alfa,Modelo2$df.residual); Chi_Tab
+p_valor=1-pchisq(Modelo2$deviance,Modelo2$df.residual); p_valor
+# Coeficiente de determinación
+R2= (1-Modelo2$deviance/Modelo2$null.deviance)*100; R2
+
+# Cálculo de los Odds Ratios
+exp(coef(Modelo2))
+
+# IC para los coeficientes y OR
+NC=0.95
+confint.default(Modelo2, level=NC)
+exp(confint.default(Modelo2, level=NC))
+
+# Predicción para nuevo agricultores
+Xo=c(1,8,1,1,0,768,577); P_Xo=sum(Xo*coef(Modelo2)); P=1/(1+exp(-(P_Xo))); P
+Xo=c(1,6,0,1,0,809,579); P_Xo=sum(Xo*coef(Modelo2)); P=1/(1+exp(-(P_Xo))); P
+Xo=c(1,3,0,0,1,1008,569); P_Xo=sum(Xo*coef(Modelo2)); P=1/(1+exp(-(P_Xo))); P
+Xo=c(1,3,1,0,0,1358,512); P_Xo=sum(Xo*coef(Modelo2)); P=1/(1+exp(-(P_Xo))); P
+Xo=c(1,4,1,0,0,961,599); P_Xo=sum(Xo*coef(Modelo2)); P=1/(1+exp(-(P_Xo))); P
+
+###############
+# Pregunta 11 #
+###############
+
+library(MASS)
+Modelo_B <- stepAIC(Modelo1, trace=TRUE, direction='backward')
+Modelo_B$anova
+summary(Modelo_B)
+Modelo_F <- stepAIC(Modelo1, trace=FALSE, direction='forward')
+Modelo_F$anova
+summary(Modelo_F)
+Modelo_S <- stepAIC(Modelo1, trace=FALSE, direction="both")
+Modelo_S$anova
+summary(Modelo_S)
+
+# Gráficas de diagnóstico
+par( mfrow=c(2,2))
+plot(Modelo1)
+

@@ -1,0 +1,164 @@
+# Entrada de datos
+# POISSON
+# Definicion de varialbe
+  # Variabñe dependiente
+  # Variable predictora; X1, X2, ...
+# Componentes del MLG
+  # Componente aleatorio: Yi ~ Poisson(ui), E(Y) = u
+  #          f(y;u) = (exp(-u)*u^y)/y! ,   y = 0,1,2,...
+  # Componente sistematico (Predictor Lineal): 
+  #           
+Datos <- read.table("MLII_PD_Clase_02_Datos01.csv", header = TRUE, sep = ";")
+attach(Datos)
+X_Datos <- as.matrix(Datos)
+n <- dim(X_Datos)[1]
+p <- dim(X_Datos)[2]
+X <- X_Datos[, 1:(p - 1)]
+y <- X_Datos[, p:p]
+p <- p - 1
+W <- matrix(0, nrow = n, ncol = n)
+
+# Modo memoria
+# Valores iniciales
+b<-c(1.6, -0.2, -0.1, 0.02)
+# Inicio de las iteraciones
+m = 5
+for (i in 0:m) {
+  cat("Iteraccion",i,"El valor de b es: ",b,"\n")
+  Xb<-X%*%b
+  wii <- exp(Xb)
+  diag(W) <- wii
+  z <- Xb + y *exp(-(Xb))-1
+  b <- solve(t(X)%*%W%*%X)%*%(t(X)%*%W%*%z)
+}
+
+b
+
+# Exuaciones Normales
+XWX = t(X)%*%W%*%X; XWX
+XWz = t(X)%*%W%*%z; XWz
+
+# Intervalos de confianza
+NC = 0.95
+Cov_B <- solve(t(X)%*%W%*%X); Cov_B
+for (i in 1:p) {
+  LI = b[i] - qnorm(1 - (1-NC)/2) * sqrt(Cov_B[i,i])
+  LS = b[i] + qnorm(1 - (1-NC)/2) * sqrt(Cov_B[i,i])
+  cat("IC Coeficiente: b",i-1,"LI:",LI,"LS:",LS,"\n")
+}
+
+# sumary a mano
+h <- diag(sqrt(Cov_B))
+sumary <- data.frame("Estimate Error" = b,
+                     "Std. Error" = h,
+                     "z value" = b/h,
+                     "Pr(>|z|" = 2 * (1-pnorm(abs(b/h)))); sumary
+
+# Cálculo de las medidas de bondad de ajuste
+l_bmax <- sum(y*log(y) - y - log(factorial(y))); l_bmax
+yest <- exp(Xb); yest
+l_b <- sum(y * log(yest) - yest - log(factorial(y))); l_b
+
+
+
+# Calculo de la deviance
+D = 2*(l_bmax - l_b);D
+#D = 2*sum(y*log(y/yest));D (Otra forma)
+
+# Deviance null
+D_null <- 2 * sum(y*log(y/mean(y))); D_null
+
+# AIC y BIC
+AIC = 2*p-2*l_b; AIC
+BIC = log(n)*p-2*l_b;BIC
+
+# Residuales de Pearson
+Ri = (y-yest)/sqrt(yest);Ri
+# Residuales de deviance
+Di = y*log(y/yest); Di
+
+# Calculo de Chi- Cuadrado y la deviance
+Chi =sum(Ri*Ri); Chi
+Des = 2*sum(Di); Des
+
+# Calculo de los coeficientes de determinacion
+desv_residual = 2*sum(y*log(y/yest)); desv_residual
+desv_nulo = 2 * sum(y*log(y/mean(y))); desv_nulo
+R2 = (1 - desv_residual/desv_nulo)*100; R2
+
+
+
+##################
+### Problema 2 ###
+##################
+
+## BINOMIAL
+## Modelo 1 (Solo la covariable X1)
+# Entrada de datos
+y <- c(10,12,14,18,20,22,26,28,10,9,8,5,6,5,4,3)
+n <- c(28,25,24,28,32,34,38,42,28,25,24,28,32,34,38,42)
+yy <- cbind(y,n-y)
+X <- cbind(X0 <- c(rep(1,16)),
+           X1 <- c(2,4,8,12,16,20,24,30,2,4,8,12,16,20,24,30))#,
+           #X2 <- c(1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0),
+           #X3 <- X1*X2)
+nn <- dim(X)[1]; pp <- dim(X)[2]
+W <- matrix(0, nrow = nn, ncol = nn)
+
+# valores iniciales
+b<-c(-1.3, 0.004)
+m=5
+for (i in 0:m) {
+  cat("Iteraccion b:",i,"Coeficiente estimado b:",b,"\n")
+  Xb <- X%*%b
+  Pi <- exp(Xb)/(1+exp(Xb))
+  wii <- n*Pi*(1-Pi)
+  diag(W) <- wii
+  z <- Xb + (y-n*Pi)/(n*Pi*(1-Pi))
+  b <- solve(t(X)%*%W%*%X)%*%t(X)%*%W%*%z
+}
+
+b
+
+# Ecuaciones Normales
+XWX = t(X)%*%W%*%X; XWX
+XWz = t(X)%*%W%*%z; XWz
+
+# IC de cofianza de los coeficientes
+Cov_B = solve(t(X)%*%W%*%X); Cov_B
+NC = 0.95
+for (i in 1:pp) {
+  LI=b[i] - qnorm(1-((1-NC)/2))*sqrt(Cov_B[i,i])
+  LS=b[i] + qnorm(1-((1-NC)/2))*sqrt(Cov_B[i,i])
+  cat("IC Coeficiente : b",i-1," LI = ",LI, " LS = ",LS,"\n")
+}
+
+# Calculo de la Deviance
+yest <- n*Pi; yest
+l_bmax <- sum(y * log(y) - y - log(factorial(y))); l_bmax
+l_b <- sum(y * log(yest) - yest - log(factorial(y))); l_b
+
+# Cálculo de la Deviance
+D=2*sum(y*log(y/yest)+(n-y)*log((n-y)/(n-yest))); D
+
+# Prueba de la deviance
+# Hipotesis 
+# H0: El modelo logistico binario se ajusta a los datos
+# H1: El modelo logistico binario no se ajusta a los datos
+
+alfa = 0.05
+Chi_Tab = qchisq(1-alfa, nn-pp); Chi_Tab
+p_valor = 1 - pchisq(D, nn-pp); p_valor
+
+# Sumary a mano
+h <- diag(sqrt(Cov_B))
+sumary <- data.frame("Estimate Error" = b,
+                     "Std. Error" = h,
+                     "z value" = b/h,
+                     "Pr(>|z|" = 2 * (1-pnorm(abs(b/h)))); sumary
+
+# Calculo de los coeficientes de determinacion
+desv_nulo = 2 * sum(y*log(y/mean(y))); desv_nulo
+R2 = (1 - D/desv_nulo)*100; R2
+
+## Modelo 2 (Covariable X1 y X2)

@@ -1,0 +1,1179 @@
+---
+title: "Untitled"
+date: "2025-04-20"
+output: html_document
+---
+# **Pregunta 1**
+
+### Un laboratorio de control de calidad alimentario quiere evaluar si los niveles de ciertos nutrientes en una muestra de productos cumplen con los estándares esperados. Se tienen mediciones de cuatro componentes clave en 60 muestras de productos. Se evaluará si el vector de medias observado es consistente con los valores estándar definidos por la regulación.
+
+```{r echo=FALSE,mensaje_100, message=FALSE, warning=FALSE}
+library(MASS)
+library(car)
+library(MVTests)
+library(mvnormtest)
+library(ggplot2)
+library(GGally)
+library(reshape2)
+library(readxl)
+library(gridExtra)
+library(ggpubr)
+library(ggfortify)
+
+# Cargar datos desde el archivo Excel
+datos1 <- read_excel("p1.xlsx")
+datos1 <- as.data.frame(datos1)
+
+datos1
+
+```
+
+## Parámetros para la prueba
+
+```{r,echo=FALSE}
+n <- nrow(datos1)  # Tamaño de muestra
+p <- ncol(datos1)  # Número de variables
+
+# Vector de medias hipotético
+mu <- c(90.8, 75.2, 13.2, 7.3)
+
+# Matriz de varianza-covarianza
+sigma <- matrix(c(10,-4.5,3.5,3.5,
+                  -4.5,4,-2.5,-2.5,
+                  3.5,-2.5,2,1.5,
+                  3.5,-2.5,1.5,2), nrow=p)
+cat("El tamaño de muestra 'n' es:", n, "\n")
+cat("El número de variables 'p' es:", p, "\n")
+cat("La matriz de varianza-covarianza es:\n")
+print(sigma)
+
+```
+
+## **Resumen Gráfico y Numérico por Variable**
+
+```{r,echo=FALSE}
+
+boxplot_plots <- lapply(names(datos1), function(var) {
+  ggplot(datos1, aes(x = factor(1), y = .data[[var]])) +
+    geom_boxplot(fill = "lightblue", color = "black") +
+    theme_minimal() +
+    labs(title = paste("Boxplot de", var), x = "", y = var)
+})
+grid.arrange(grobs = boxplot_plots, ncol = 2) 
+
+descriptive_stats <- summary(datos1)
+
+descriptive_stats
+```
+
+### En general, los valores de proteína, carbohidratos y grasas son bastante similares entre sí, lo que indica una composición nutricional equilibrada. La fibra muestra un poco más de variación, pero sigue dentro de un rango aceptable.
+
+## **Diagrama de dispersión**
+
+```{r,echo=FALSE}
+ggpairs(datos1, title = "Diagramas de dispersión de los nutrientes")
+
+```
+
+### La correlación entre proteína y grasas es alta y positiva (r = 0.773), lo cual indica que a mayor contenido de proteína, también aumenta el contenido de grasas.
+
+### Existe una correlación negativa entre proteína y carbohidratos (r = -0.684), lo que sugiere que los alimentos con mayor proteína tienden a tener menos carbohidratos.
+
+### La correlación entre carbohidratos y grasas es fuerte y negativa (r = -0.838), indicando una relación inversa entre estos dos nutrientes.
+
+### La fibra se relaciona positivamente con la proteína (r = 0.749) y las grasas (r = 0.680), mientras que tiene una correlación negativa significativa con los carbohidratos (r = -0.834).
+
+## **Identificacion de valores atipicos multivariados**
+
+```{r,echo=FALSE}
+library(MVN)
+atipicos <- mvn(datos1,multivariateOutlierMethod = "adj")
+```
+
+### Aunque se detectaron 9 outliers en los 60 datos, no se eliminaron porque podrían representar variabilidad real y útil del fenómeno estudiado. Quitarlos podría distorsionar los resultados y reducir la representatividad del análisis.
+
+## **Supuesto de normalidad**
+
+### H0: Los datos siguen una distribucion normal multivariada 
+### H1: Los datos no siguen una distribucion normal multivariada
+### alpha = 0.05
+
+```{r,echo=FALSE}
+mshapiro.test(t(datos1))
+
+```
+
+### Dado que el valor-p es mayor a 0.05, no se rechaza la hipótesis nula de normalidad. Por lo tanto, los datos presentan evidencia suficiente para suponer que siguen una distribución normal multivariada.
+
+## **Prueba de hipótesis para el vector de medias**
+
+### H0: El vector de medias muestrales es igual al vector de medias hipotéticas 
+### H1: El vector de medias muestrales no es igual al vector de medias hipotéticas
+### alpha = 0.05
+
+```{r,echo=FALSE}
+media_muestral <- colMeans(datos1)
+Z2 <- t(media_muestral - mu) %*% solve(sigma / n) %*% (media_muestral - mu)
+p_valor <- 1 - pchisq(Z2, df = p)
+
+cat("Estadística Z^2:", Z2, "\n")
+cat("p-valor:", p_valor, "\n")
+
+
+```
+
+### Con un nivel de significancia de 0.05, el p-valor obtenido es 0.0285, que es menor que el nivel de significancia. Por lo tanto, rechazamos la hipótesis nula y concluimos que hay evidencia estadística suficiente para afirmar que el vector de medias muestrales es significativamente diferente al vector de medias hipotéticas.
+
+## **Prueba de Bartlett para la Matriz de Covarianza**
+
+### H0: la matriz de covarianza es igual a la Matriz dada
+### H1: la matriz de covarianza de la muestra es diferente de la matriz de covarianza dada
+
+```{r,echo=FALSE}
+result <- Bcov(datos1,Sigma=sigma)
+summary(result)
+```
+
+### Con un nivel de significancia de 0.05, el p-valor obtenido es 0.121, que es mayor que el nivel de significancia. Por lo tanto, no rechazamos la hipótesis nula y concluimos que no hay evidencia suficiente para afirmar que la matriz de covarianza de la muestra es diferente de la matriz de covarianza dada.
+
+## **Pregunta 2**
+
+```{r echo=FALSE,mensaje_500, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Para este analisis se usan datos correspondientes a diversas características de muestras de café, tales como la acidez, cafeína, aroma y cuerpo. Cada una de estas variables representa un atributo sensorial importante para la calidad del café, y el objetivo del análisis es verificar si el vector de medias de estas variables es igual a un vector de medias hipotético previamente conocido. Con este fin, se aplican métodos estadísticos multivariados, como la prueba de Hotelling T2, para evaluar la igualdad de las medias y realizar un análisis más detallado sobre la variabilidad y las relaciones entre las variables.
+
+```{r echo=FALSE,mensaje_501, message=FALSE, warning=FALSE}
+# Cargar paquetes necesarios
+library(nortest)
+library(summarytools)
+library(BSDA)
+library(inferr)
+library(mvnormtest)
+library(MVTests)
+library(MVN)
+library(tidyverse)
+library(ggstatsplot)
+library(effectsize)
+library(car)
+library(reshape2) 
+library(ggthemes)
+library(ggpubr)
+library(ICSNP)
+library(heplots)
+library(biotools)
+library(ergm)
+library(rrcov)
+library(Hotelling)
+library(echarts4r)
+library(gganimate)
+library(hrbrthemes)
+library(png)
+library(gifski)
+library(readxl)
+
+```
+
+```{r echo=FALSE,mensaje_502, message=FALSE, warning=FALSE}
+datos2 <- read_excel("datosp2.xlsx")
+datos2
+```
+
+## **Analisis exploratorio de los datos**
+
+
+### **Visualización y Resumen Descriptivo de los Datos**
+
+
+```{r echo=FALSE,mensaje_503, message=FALSE, warning=FALSE}
+
+
+library(tidyr)
+library(ggplot2)
+
+datos2_long <- pivot_longer(datos2, cols = everything(), names_to = "Variable", values_to = "Valor")
+
+ggplot(datos2_long, aes(x = Variable, y = Valor, fill = Variable)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Gráfico de Cajas por Variable",
+       x = "Variable",
+       y = "Valor") +
+  theme(legend.position = "none")
+
+summarytools::descr(datos2)
+
+```
+### Acidez: Presenta una distribución simétrica y estable, con baja variabilidad (CV = 0.06) y sin valores atípicos detectados en el gráfico de caja.
+
+### Cafeína: La distribución es simétrica y la variabilidad es moderada (CV = 0.18), sin valores extremos relevantes.
+
+### Aroma: Aunque la distribución es en su mayoría estable, el gráfico de caja muestra algunos valores atípicos, lo que sugiere mayor variabilidad en esta variable.
+
+### Cuerpo: Similar a aroma, el gráfico de caja indica valores atípicos, aunque la distribución sigue siendo mayormente simétrica con una variabilidad moderada (CV = 0.11).
+
+
+## **Grafico de correlacion**
+
+```{r echo=FALSE,mensaje_510, message=FALSE, warning=FALSE}
+library(MASS)
+library(car)
+library(MVTests)
+library(mvnormtest)
+library(ggplot2)
+library(GGally)
+library(reshape2)
+library(readxl)
+library(gridExtra)
+library(ggpubr)
+library(ggfortify)
+ggpairs(datos2)
+
+```
+
+### Acidez y cafeína: La correlación entre estas variables es débilmente negativa (-0.14), lo que indica que, en general, a medida que aumenta la acidez, la cafeína tiende a disminuir levemente, aunque la relación es casi nula.
+
+### Acidez y cuerpo: La correlación entre acidez y cuerpo es positiva, pero muy débil (0.09), lo que sugiere que no existe una relación clara entre estas dos variables.
+
+### Cafeína y aroma: Existe una ligera correlación positiva (0.13) entre cafeína y aroma, lo que indica que un aumento en la cafeína está ligeramente asociado con un aumento en el aroma.
+
+### Cafeína y cuerpo: La correlación entre cafeína y cuerpo es débilmente negativa (-0.13), lo que sugiere que no hay una relación fuerte, pero hay una ligera tendencia a que, al aumentar la cafeína, el cuerpo disminuya.
+
+### Aroma y cuerpo: La correlación entre aroma y cuerpo es débilmente negativa (-0.14), indicando que, en general, no hay una relación fuerte entre estas dos variables.
+
+
+## **Identificando Valores Atípicos**
+```{r echo=FALSE,mensaje_511, message=FALSE, warning=FALSE}
+# Distancia ajustada de Mahalanobis
+outliers.adj <- mvn(data = datos2, multivariateOutlierMethod = "adj")
+```
+
+### Los individuos identificados como atípicos no corresponden a errores de medición ni a valores imposibles; representan observaciones válidas dentro del contexto del estudio. Por lo tanto, se decidió conservarlos.
+
+## **Supuesto de normalidad**
+
+### H0: Los datos siguen una distribucion normal multivariada 
+### H1: Los datos no siguen una distribucion normal multivariada
+### alpha = 0.05
+
+```{r echo=FALSE}
+mardia <- mvn(data = datos2, mvnTest = "mardia")
+mardia$multivariateNormality
+```
+
+### Con un nivel de significancia del 5%, los resultados de la prueba de normalidad multivariada (MVN) no muestran evidencia suficiente para rechazar la hipótesis nula de normalidad. Esto indica que las variables siguen una distribución normal multivariada
+
+## Prueba de Hotelling T²
+
+### H0: μ = μ₀ = (4.7, 1.2, 6.8, 6.0)
+### H1: μ ≠ μ₀
+### alpha = 0.05
+
+```{r echo=FALSE,mensaje_512, message=FALSE, warning=FALSE}
+mu <- c(4.7, 1.2, 6.8, 6.0)
+result <- OneSampleHT2(datos2, mu0 = mu, alpha = 0.05)
+summary(result)
+
+```
+
+### La prueba de Hotelling T² indica que todas las variables (acidez, cafeína y cuerpo) son iguales a sus valores hipotéticos (mu0), ya que no muestran diferencias significativas. Sin embargo, el aroma presenta una diferencia significativa respecto a su valor hipotético.
+## 
+
+**Pregunta 4**
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+library(nortest)
+library(summarytools)
+library(BSDA)
+library(inferr)
+library(mvnormtest)
+library(MVTests)
+library(MVN)
+library(tidyverse)
+library(ggstatsplot)
+library(effectsize)
+library(car)
+library(reshape2) 
+library(ggthemes)
+library(ggpubr)
+library(ICSNP)
+library(heplots)
+library(biotools)
+library(ergm)
+library(rrcov)
+library(Hotelling)
+library(echarts4r)
+library(gganimate)
+library(hrbrthemes)
+library(png)
+library(gifski)
+library(readxl)
+```
+
+### Este analisis compara 2 tipos de modelos de drones con las variables 't_bateria_v', que significa el tiempo de bateria en minutos que tiene el modelo mientras vuela, y la otra variable 'variable', que muestra la altura maxima en metros que puede llegar a alcanzar el modelo.
+
+
+```{r,echo=FALSE }
+
+datos2 = read_excel("pc1_ej4.xlsx", sheet = "Sheet2")
+head(datos2)
+```
+
+
+```{r,echo=FALSE }
+t_bateria_v1=datos2 %>% filter(T_rob=='modelo1') %>% pull(t_bateria_v)
+t_bateria_v2=datos2 %>% filter(T_rob=='modelo2') %>% pull(t_bateria_v)
+```
+
+
+## **Analisis descriptivo**
+
+
+```{r,echo=FALSE }
+summary(datos2)
+
+```
+
+```{r ,echo=FALSE}
+datos2 %>% get_summary_stats(t_bateria_v)
+
+```
+Se puede ver que el promedio de los 2 modelos del tiempo de vuelo es de 280.783 
+minutos, con un minimo de 260 minutos y maximo de 310 minutos de vuelos.
+
+```{r,echo=FALSE }
+datos2 %>% get_summary_stats(vuelo)
+```
+Se puede ver que el promedio de altura que toma el dron es de 280.087 metros,
+con un maximo de 317m y minimo de 237m.
+
+
+### **Analisis de tiempo de vuelo por modelo**
+
+```{r,echo=FALSE }
+datos2 %>%
+  group_by(T_rob) %>%
+  get_summary_stats(t_bateria_v, type = "common")
+```
+```{r,echo=FALSE}
+ggplot(datos2, aes(x =T_rob, y = t_bateria_v)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(title = "Boxplot de Tiempo de Batería por Tipo de Modelo",
+       x = "Tipo de Modelo",
+       y = "Tiempo de Batería (V)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Hay una diferencia notable entre el tiempo de vuelo del dron del modelo1 y del modelo 2,ya que el modelo 1 tiene mas minutos de vuelo.
+
+
+### **Analisis de altura de vuelo por modelo*
+```{r,echo=FALSE }
+datos2 %>%
+  group_by(T_rob) %>%
+  get_summary_stats(vuelo, type = "common")
+```
+```{r,echo=FALSE}
+ggplot(datos2, aes(x =T_rob, y = vuelo)) +
+  geom_boxplot(fill = "red") +
+  labs(title = "Boxplot de altura de vuelo por Tipo de Modelo",
+       x = "Tipo de Modelo",
+       y = "vuelo (m)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+A su vez, tambien hay una diferencia entre el modelo1 y modelo2 en altura de vuelo,
+ya que el modelo2 alcanza una mayor altura maxima.
+
+## **Supuesto de normalidad**
+
+```{r,echo=FALSE}
+X=filter(datos2,
+         T_rob == "modelo1")[, 2:3]
+X
+mshapiro.test(t(X))
+```
+H0: Los datos siguen una distribucion normal multivariada
+H1: Los datos no siguen una distribucion normal multivariada
+alpha = 0.05
+
+SI CUMPLE LA PRUEBA DE NORMALIDAD, en el modelo1
+
+```{r,echo=FALSE}
+Y=filter(datos2,
+         T_rob == "modelo2")[, 2:3]
+Y
+mshapiro.test(t(Y))
+```
+
+H0: Los datos siguen una distribucion normal multivariada
+H1: Los datos no siguen una distribucion normal multivariada
+alpha = 0.05
+
+SI CUMPLE LA PRUEBA DE NORMALIDAD, en el modelo2
+
+
+## **Analisis de datos** 
+```{r}
+X=(datos2 %>% filter(T_rob == "modelo1"))[, 2:3]
+Y=(datos2 %>% filter(T_rob == "modelo2"))[, 2:3]
+var(X)
+var(Y)
+```
+Interpretación de X:
+
+Varianza de t_bateria_v: 77.12
+Indica que hay poca variabilidad en los tiempos de batería para modelo1.
+
+Varianza de vuelo: 354.71
+Mucho más alta ⇒ los tiempos de vuelo varían más en modelo1.
+
+Covarianza t_bateria_v y vuelo: -22.80
+Negativa: sugiere que, en general, cuando el tiempo de batería sube, el tiempo de vuelo tiende a bajar ligeramente, aunque la relación no es muy fuerte.
+
+Interpretación de Y:
+Varianza de t_bateria_v: 54.14
+Incluso menos variabilidad en batería que en modelo1.
+
+Varianza de vuelo: 505.41
+Aún más variable el tiempo de vuelo que en modelo1.
+
+Covarianza t_bateria_v y vuelo: -22.90
+También negativa y muy similar ⇒ comportamiento parecido entre las dos variables en ambos grupos.
+
+```{r, echo=FALSE}
+datos2
+G<-c(rep(1,10),rep(2,13))
+results1 <- TwoSamplesHT2(data=datos2[,2:3],group=G,alpha=0.05,
+                          Homogenity = F)
+summary(results1)
+```
+Hay evidencia estadísticamente significativa de que las medias multivariadas de los dos modelos son diferentes.
+```{r, echo=FALSE}
+summary(X)
+```
+
+```{r, echo=FALSE}
+summary(Y)
+```
+
+```{r, echo=FALSE}
+approx.hotelling.diff.test(X, Y, mu0 =c(0,0) ,
+                           assume.indep = T, var.equal = F)
+```
+
+Ahora un ejemplo con un mu0 =c(0,0).
+
+Existe una diferencia estadísticamente significativa entre los vectores de medias de los dos grupos en las variables t_bateria_v y vuelo (p < 0.001).
+
+Esto sugiere que los dos grupos no tienen las mismas medias multivariadas — es decir, hay evidencia fuerte de que al menos una de las dos variables difiere entre los grupos.
+```{r,echo=FALSE}
+approx.hotelling.diff.test(X, Y, mu0 =c(22.5,-28.8) ,
+                           assume.indep = T, var.equal = F)
+```
+
+Ahora un ejemplo con un mu0 =c(22.5,-28.8).
+
+No se rechaza la hipótesis nula, lo que indica que las diferencias de medias entre los grupos son compatibles con haber sido de 22.5 en t_bateria_v y -28.8 en vuelo.
+
+En otras palabras: esos valores propuestos en mu0 son coherentes con los datos. El modelo los acepta como posibles diferencias reales entre los grupos.
+
+
+## **Prueba ROBUSTA de Hotelling**
+```{r, echo=FALSE}
+T2.test(X, Y, mu=0,method = "c")
+```
+
+```{r, echo=FALSE}
+HotellingsT2(filter(datos2,
+                    T_rob == "modelo1")[, 2:3],
+             filter(datos2,
+                    T_rob == "modelo2")[, 2:3])
+
+X=(datos2 %>% filter(T_rob == "modelo1"))[, 2:3]
+
+Y=(datos2 %>% filter(T_rob == "modelo2"))[, 2:3]
+
+HotellingsT2(X, Y)
+HotellingsT2(X, Y,mu=c(22.5,-28.8))
+```
+
+# **Pregunta 5**
+
+```{r echo=FALSE,mensaje, message=FALSE, warning=FALSE}
+rm(list=ls())
+library(tidyverse)
+library(pacman)
+p_load(readxl,mosaic,summarytools,nortest,car,lmtest,
+       phia,rstatix,dplyr,ggpubr,utils)
+```
+
+### Este análisis compara 3 métodos de cultivo de papa, surcos tradicionales, camellones. Evaluando su efecto sobre cuatro características claves del tubérculo: peso, diámetro, materia seca y rendimiento por hectárea. Dado que estas variables están relacionadas se aplicará un manova para detectar diferencias globales entre los trata
+
+```{r echo=FALSE,mensaje_1, message=FALSE, warning=FALSE}
+library(readxl)
+datos5<-read_excel("p5.xlsx")
+datos5
+
+```
+
+## **Estadística descriptiva**
+
+### Resumen estadístico univariado de las variables respuesta por tipo de cultivo
+
+### **Distribución y resumen del peso del tubérculo por tipo de cultivo**
+
+```{r echo=FALSE,mensaje_2, message=FALSE, warning=FALSE}
+library(ggplot2)
+ggplot(datos5, aes(x = Cultivo, y = Peso, fill = Cultivo)) +
+  geom_boxplot() +
+  labs(title = "Distribución del Peso de las Papas por Método de Cultivo",
+       x = "Método de Cultivo",
+       y = "Peso del Tubérculo (g)") +
+  theme_minimal() +
+  scale_fill_manual(values = c("red", "blue", "green"))
+
+
+with(datos5, stby(datos5$Peso,datos5$Cultivo,descr))
+```
+
+### El análisis univariado muestra diferencias claras entre los tres métodos. El método por camellones presentó el mayor rendimiento promedio (132.04 g), aunque con la mayor variabilidad en los datos. En contraste, el método hidropónico tuvo el menor rendimiento (112.36 g), pero fue el más estable. El tercer método mostró valores intermedios tanto en rendimiento como en dispersión, lo que sugiere un equilibrio entre productividad y consistencia.
+
+### **Distribución y resumen del diámetro del tubérculo por tipo de cultivo**
+
+```{r echo=FALSE,mensaje_3, message=FALSE, warning=FALSE}
+ggplot(datos5,aes(x=Cultivo, y=Diametro, fill=Cultivo))+
+  geom_boxplot()+
+  labs(title="Distribucion del Diametrico de las papas por Metodo",
+       x="Metodo de cultivo",
+       y="Diametro del tuberculo")+
+  theme_minimal() +
+  scale_fill_manual(values = c("red", "blue", "green"))  
+
+with(datos5,stby(datos5$Diametro,datos5$Cultivo,descr))
+
+```
+
+### En cuanto al diámetro, el método por camellones presentó el mayor valor promedio (6.45 cm), seguido del método por surcos (6.03 cm) y finalmente el método hidropónico (5.55 cm). Aunque el rendimiento en diámetro fue mayor en camellones, este método mostró una variabilidad ligeramente superior (desviación estándar = 0.42 cm). El método hidropónico fue nuevamente el más estable (CV = 0.03), pero con el diámetro promedio más bajo. El método por surcos presentó valores intermedios tanto en rendimiento como en dispersión.
+
+### **Distribución y resumen del % de Materia seca del tubérculo por tipo de cultivo**
+
+```{r echo=FALSE,mensaje_4, message=FALSE, warning=FALSE}
+ggplot(datos5,aes(x=Cultivo, y=Materia_Seca, fill=Cultivo))+
+  geom_boxplot()+
+  labs(title="Distribucion del % de Materia Seca
+       de las papas por Metodo",
+       x="Metodo de cultivo",
+       y="% de Materia Seca")+
+  theme_minimal() +
+  scale_fill_manual(values = c("red", "blue", "green"))  
+
+
+with(datos5,stby(datos5$Materia_Seca,datos5$Cultivo,descr))
+```
+
+### Respecto al contenido de materia seca, el método por camellones obtuvo el valor promedio más alto (21.58%), mientras que el método hidropónico mostró el promedio más bajo (18.89%). El método por surcos presentó un valor intermedio (20.24%) pero con la mayor variabilidad (desviación estándar = 1.47%). Aunque los camellones mostraron el mejor rendimiento en esta variable, el método hidropónico fue más homogéneo (CV = 0.05), destacando nuevamente por su estabilidad.
+
+### **Distribución y resumen del Rendimiento por hectarea del tubérculo por tipo de cultivo**
+
+```{r echo=FALSE,mensaje_5, message=FALSE, warning=FALSE}
+ggplot(datos5,aes(x=Cultivo, y=Rendimiento_ha, fill=Cultivo))+
+  geom_boxplot()+
+  labs(title="Distribucion del Rendimiento/ha
+       de las papas por Metodo",
+       x="Metodo de cultivo",
+       y="Rendimiento/ha")+
+  theme_minimal() +
+  scale_fill_manual(values = c("red", "blue", "green"))  
+
+with(datos5,stby(datos5$Rendimiento_ha,datos5$Cultivo,descr))
+
+```
+
+### En cuanto al rendimiento por hectárea, el método por camellones mostró el mayor rendimiento promedio (30.47 kg/ha), seguido por el método por surcos (24.48 kg/ha) y el método hidropónico (22.21 kg/ha). El método camellones, aunque con el mayor rendimiento, presentó una mayor variabilidad (desviación estándar = 2.83 kg/ha), mientras que el hidropónico destacó por ser el más consistente (CV = 0.06), pero con un rendimiento inferior. El método por surcos presentó valores intermedios tanto en rendimiento como en dispersión.
+
+## **Identificacion de valores atipicos multivariados**
+
+```{r echo=FALSE,mensaje_7, message=FALSE, warning=FALSE}
+Y <- cbind(datos5$Peso,datos5$Diametro,datos5$Materia_Seca,
+           datos5$Rendimiento_ha)
+
+Y <- as.data.frame(Y)
+
+library(MVN)
+
+atipicos <- mvn(Y,multivariateOutlierMethod = "adj")
+```
+
+### Aunque se detectaron 5 atípicos multivariantes, no se eliminaron del análisis ya que representan datos reales del experimento, no son errores de medición, y aportan información valiosa sobre la variabilidad de los tratamientos. Además, el tamaño muestral es reducido y excluirlos podría afectar la validez y potencia del análisis.
+
+## **Supuesto de normalidad**
+
+### H0: Los datos siguen una distribucion normal multivariada 
+### H1: Los datos no siguen una distribucion normal multivariada
+### alpha = 0.05
+
+```{r echo=FALSE,mensaje_8, message=FALSE, warning=FALSE}
+library(MVN)
+
+nor<-mvn(Y,desc = T, mvnTest = "mardia",multivariatePlot = "qq")
+nor$multivariateNormality
+```
+
+### Con un nivel de significancia del 5%, se tiene suficiente evidencia para rechazar la hipótesis nula, concluyendo que los datos no siguen una distribución normal multivariada.
+
+## **Supuesto de homogeneidad de matrices variancia covariancia**
+
+### H0: Las matrices de covarianza son iguales
+### H1: Al menos una matriz de covarianza es diferente
+
+```{r echo=FALSE}
+datos5$Cultivo <- as.factor(datos5$Cultivo)
+library(heplots)
+boxM(datos5[-1], datos5$Cultivo)
+
+
+```
+
+### Con un nivel de significancia del 5%, el p-valor obtenido (0.06948) es mayor que 0.05. Por lo tanto, no se rechaza la hipótesis nula, concluyéndose que las matrices de covarianza son homogéneas entre los grupos.
+
+## **Supuesto de correlación entre variables**
+
+### H0: La matriz de correlaciones es igual a la matriz identidad
+### H1: La matriz de correlaciones es diferente a la identidad
+
+```{r echo=FALSE,mensaje_9, message=FALSE, warning=FALSE}
+library(MVTests)
+res1 = Bsper(datos5[, -1])
+summary(res1)
+
+
+```
+
+### Con un nivel de significancia del 5%, se rechaza la H0, concluyendo que las variables dependientes están significativamente correlacionadas
+
+## **MANOVA**
+
+### H0: No hay diferencias significativas entre los grupos de cultivo en las variables dependientes.
+### H1:  Existen diferencias significativas entre los grupos de cultivo en las variables dependientes.
+
+```{r echo=FALSE,mensaje_10, message=FALSE, warning=FALSE}
+modelo5 = manova(cbind(Peso, Diametro ,
+                      Materia_Seca ,Rendimiento_ha) ~
+                  Cultivo, data = datos5)
+summary(modelo5, test = "Pillai")
+
+```
+
+### Con un nivel de significancia del 5%, rechazamos la hipótesis nula, lo que indica que hay diferencias significativas entre los cultivos en cuanto a las variables Peso, Diámetro, Materia Seca y Rendimiento por hectárea.
+
+### Dado que el MANOVA indicó diferencias significativas entre los grupos de cultivo, se realiza una comparación por pares para identificar específicamente cuáles de los cultivos difieren entre sí 
+
+## **Comparacion por pares**
+
+### H0 : No hay diferencia significativa entre los dos vectores o grupos.
+### H1 : Hay una diferencia significativa entre los dos vectores o grupos.
+
+```{r echo=FALSE,mensaje_11, message=FALSE, warning=FALSE}
+Tratam <- c("Surcos","Camellones","Hidroponico")
+comb<-t(combn(length(Tratam) , 2))
+
+for(i in 1:nrow(comb)){
+  modelo.comp = manova(cbind(Peso,Diametro,
+                             Materia_Seca,Rendimiento_ha) ~ 
+                         Cultivo, data=datos5,
+                       subset = Cultivo %in% Tratam[comb[i,]])
+  print(paste("Trat: ", Tratam[comb[i,]][1], "y", Tratam[comb[i,]][2]))
+  print(summary(modelo.comp, test = "Pillai"))
+  cat("\n")
+  
+}
+
+```
+
+### Después de hacer la comparación por pares de los tipos de cultivo, se observó que estos son significativamente diferentes entre sí:
+
+### Surco vs Camellones: El valor de Pillai es de 0.716, lo que indica que el 71.6% de la variabilidad es explicada por el tipo de cultivo
+
+### Surco vs Hidropónico: El valor de Pillai es de 0.686, lo que significa que el 68.6% de la variabilidad se debe al tipo de cultivo
+
+### Camellones vs Hidropónico: El valor de Pillai es de 0.920, lo que implica que el 92% de la variabilidad es atribuible al tipo de cultivo
+
+# **Pregunta 6**
+
+```{r echo=FALSE,mensaje_30, message=FALSE, warning=FALSE}
+rm(list=ls())
+library(tidyverse)
+library(pacman)
+p_load(readxl,mosaic,summarytools,nortest,car,lmtest,
+       phia,rstatix,dplyr,ggpubr,utils)
+```
+
+### Se evaluaron cuatro variedades de tomate en un Diseño de Bloques Completos al Azar (DBCA) con cinco evaluadores. A cada variedad se le midieron cuatro características: altura de planta, rendimiento del fruto, contenido de azúcar y nivel de acidez. El objetivo es usar un MANOVA para saber si existen diferencias significativas entre las variedades considerando todas las variables juntas.
+
+```{r echo=FALSE,mensaje_31, message=FALSE, warning=FALSE}
+library(readxl)
+datos6<-read_excel("p6.xlsx")
+
+datos6$Variedad <- factor(datos6$Variedad)
+datos6$Evaluador <- factor(datos6$Evaluador)
+datos6
+```
+
+## **Supuesto de normalidad multivariada**
+
+### H0: Si hay normalidad multivariada
+### H1: No hay normalidad multivariada
+### alpha = 0.05
+
+```{r echo=FALSE,mensaje_32, message=FALSE, warning=FALSE}
+
+trat1 = datos6 %>% filter(Variedad == 1) %>%
+  dplyr::select(AlturaPlanta, RendimientoFruto, ContenidoAzucar, NivelAcidez)
+trat2 = datos6 %>% filter(Variedad == 2) %>%
+  dplyr::select(AlturaPlanta, RendimientoFruto, ContenidoAzucar, NivelAcidez)
+trat3 = datos6 %>% filter(Variedad == 3) %>%
+  dplyr::select(AlturaPlanta, RendimientoFruto, ContenidoAzucar, NivelAcidez)
+trat4 = datos6 %>% filter(Variedad == 4) %>%
+  dplyr::select(AlturaPlanta, RendimientoFruto, ContenidoAzucar, NivelAcidez)
+
+library(mvnormtest)
+mshapiro.test(t(trat1))
+mshapiro.test(t(trat2))
+mshapiro.test(t(trat3))
+mshapiro.test(t(trat4))
+
+```
+
+### Con un nivel de significancia del 5%, hay evidencia suficiente para rechazar la hipótesis nula de que los datos provienen de una distribución normal, ya que el p-valor es 0.000131, que es mucho menor que 0.05. Esto sugiere que los datos no siguen una distribución normal multivariada.
+
+## **Supuesto de homogeneidad de matrices variancia covariancia**
+
+### H0: Las matrices de varianza-covarianza son homogéneas
+### H1: Las matrices de varianza-covarianza no son homogéneas 
+
+```{r echo=FALSE,mensaje_34, message=FALSE, warning=FALSE}
+library(heplots)
+
+res <- boxM(datos6[, 2:5], datos6$Variedad)
+res
+summary(res)
+
+```
+
+### Con un p-valor de 0.004128, que es menor que el nivel de significancia común de 0.05, rechazamos la hipótesis nula de que las matrices de varianza-covarianza son homogéneas entre los grupos.
+
+## **Supuesto de correlación entre variables**
+
+### H0: La matriz de correlaciones es igual a la matriz identidad
+### H1: La matriz de correlaciones es diferente a la identidad
+
+```{r echo=FALSE,mensaje_35, message=FALSE, warning=FALSE}
+library(MVTests)
+res1 = Bsper(datos6[, c(-1, -6)])
+summary(res1)
+
+
+
+```
+
+```{r echo=FALSE,mensaje_210, message=FALSE, warning=FALSE}
+library(MASS)
+library(car)
+library(MVTests)
+library(mvnormtest)
+library(ggplot2)
+library(GGally)
+library(reshape2)
+library(readxl)
+library(gridExtra)
+library(ggpubr)
+library(ggfortify)
+ggpairs(datos6[,c(2:5)], title = )
+```
+
+### Dado que el p-valor es muy bajo, podemos concluir que las variables AlturaPlanta, RendimientoFruto, ContenidoAzucar y NivelAcidez están significativamente correlacionadas. Esto sugiere que un análisis multivariado es adecuado para estudiar las relaciones entre estas características del cultivo y la calidad de los frutos.
+
+## **Manova**
+
+### Variedad
+
+### H0: Los vectores de medias poblacionales son iguales entre las diferentes variedades.
+
+### H1₁: Al menos un vector de medias poblacionales difiere entre las variedades.
+
+### Publico
+
+### H0: No existen diferencias significativas entre los evaluadores.
+
+### H1: Sí existen diferencias significativas entre los evaluadores, lo cual justificaría el uso del bloque.
+
+```{r echo=FALSE,mensaje_37, message=FALSE, warning=FALSE}
+modelo6 = manova(cbind(AlturaPlanta, RendimientoFruto, ContenidoAzucar, NivelAcidez) ~ Variedad+Evaluador, data = datos6)
+
+summary(modelo6, test = "Pillai")
+
+
+```
+
+### Para variedad:
+### Con un nivel de significancia del 5%, el valor p (0.0003) es menor que 0.05.Por lo tanto, se rechaza H0 y se concluye que existen diferencias significativas entre las variedades respecto a las variables multivariadas (AlturaPlanta, RendimientoFruto, ContenidoAzucar y NivelAcidez).
+### Para Evaluador
+### Con un nivel de significancia del 5%, el valor p (0.2990) es mayor que 0.05. Por lo tanto, no se rechaza H0, lo que indica que no hay evidencia suficiente para afirmar que los evaluadores influyen significativamente en las variables medidas.
+
+## **Anova para cada variable dependiente**
+
+```{r echo=FALSE,mensaje_38, message=FALSE, warning=FALSE}
+
+summary.aov(modelo6)
+
+```
+
+### Los resultados muestran que la Variedad es significativamente diferente en todas las variables dependientes, mientras que Evaluador no presenta diferencias significativas en ninguna de las variables.
+
+
+## Pruebas de Comparación por Pares (Tukey)
+
+## **Altura planta**
+
+### H0: No hay diferencia significativa en la altura de las plantas entre las variedades.
+### H1:  Hay diferencia significativa en la altura de las plantas entre al menos dos de las variedades.
+### alpha = 0.05
+
+```{r echo=FALSE,mensaje_39, message=FALSE, warning=FALSE}
+# Para AlturaPlanta
+tukey_altura <- TukeyHSD(aov(AlturaPlanta ~ Variedad, data = datos6))
+tukey_altura
+
+```
+
+### Variedad 2 vs. Variedad 1: Significativa, la Variedad 2 es más alta.
+### Variedad 3 vs. Variedad 1: Significativa, la Variedad 3 es más baja.
+### Variedad 4 vs. Variedad 1: Significativa, la Variedad 4 es más alta.
+### Variedad 3 vs. Variedad 2: Altamente significativa, la Variedad 3 es más baja.
+### Variedad 4 vs. Variedad 2: Significativa, la Variedad 4 es más baja.
+### Variedad 4 vs. Variedad 3: Altamente significativa, la Variedad 4 es más alta.
+
+## **RendimientoFruto**
+
+### H0: No hay diferencia significativa en el rendimiento de los frutos entre las variedades.
+### H1: Hay diferencia significativa en el rendimiento de los frutos entre al menos dos de las variedades.
+### alpha = 0.05
+
+```{r echo=FALSE,mensaje_40, message=FALSE, warning=FALSE}
+tukey_rendimiento <- TukeyHSD(aov(RendimientoFruto ~ Variedad, data = datos6))
+tukey_rendimiento
+```
+
+### Variedad 2 vs. Variedad 1: Altamente significativa, la Variedad 2 tiene un mayor rendimiento.
+### Variedad 3 vs. Variedad 1: Altamente significativa, la Variedad 3 tiene un menor rendimiento.
+### Variedad 4 vs. Variedad 1: Altamente significativa, la Variedad 4 tiene un mayor rendimiento.
+### Variedad 3 vs. Variedad 2: Altamente significativa, la Variedad 3 tiene un menor rendimiento.
+### Variedad 4 vs. Variedad 2: Altamente significativa, la Variedad 4 tiene un menor rendimiento.
+### Variedad 4 vs. Variedad 3: Altamente significativa, la Variedad 4 tiene un mayor rendimiento.
+
+## **Contenido de Azucar**
+
+### H0: No hay diferencia significativa en el contenido de azúcar entre las variedades.
+### H1: Hay diferencia significativa en el contenido de azúcar entre al menos dos de las variedades.
+### alpha = 0.05
+
+```{r echo=FALSE,mensaje_45, message=FALSE, warning=FALSE}
+tukey_azucar <- TukeyHSD(aov(ContenidoAzucar ~ Variedad, data = datos6))
+tukey_azucar
+```
+
+### Variedad 2 vs. Variedad 1: Altamente significativa, la Variedad 2 tiene más contenido de azúcar.
+### Variedad 3 vs. Variedad 1: Altamente significativa, la Variedad 3 tiene menos contenido de azúcar.
+### Variedad 4 vs. Variedad 1: Altamente significativa, la Variedad 4 tiene más contenido de azúcar.
+### Variedad 3 vs. Variedad 2: Altamente significativa, la Variedad 3 tiene menos contenido de azúcar.
+### Variedad 4 vs. Variedad 2: Significativa, la Variedad 4 tiene menos contenido de azúcar.
+### Variedad 4 vs. Variedad 3: Altamente significativa, la Variedad 4 tiene más contenido de azúcar.
+
+## **Nivel de acidez**
+
+### H0: No hay diferencia significativa en el nivel de acidez entre las variedades
+### H1: Hay diferencia significativa en el nivel de acidez  entre al menos dos de las variedades.
+### alpha = 0.05
+
+
+```{r echo=FALSE,mensaje_50, message=FALSE, warning=FALSE}
+tukey_acidez <- TukeyHSD(aov(NivelAcidez ~ Variedad, data = datos6))
+tukey_acidez
+```
+
+### Variedad 2 vs. Variedad 1: Significativa, la Variedad 2 tiene menor acidez.
+### Variedad 3 vs. Variedad 1: Altamente significativa, la Variedad 3 tiene mayor acidez.
+### Variedad 4 vs. Variedad 1: No significativa.
+### Variedad 3 vs. Variedad 2: Altamente significativa, la Variedad 3 tiene mayor acidez.
+### Variedad 4 vs. Variedad 2: No significativa.
+### Variedad 4 vs. Variedad 3: Altamente significativa, la Variedad 4 tiene menor acidez.
+
+
+## **Pregunta 7**
+
+
+### En este experimento se investiga el efecto de dos factores (luz y riego) sobre el crecimiento de plantas en un invernadero.Se miden la altura de la planta y el número de hojas después de un mes de crecimiento bajo diferentes condiciones de luz y riego.
+
+### **Las variables dependientes que se medirán son:**
+
+### Altura de la planta (Alt) en cm.
+
+### Número de hojas (Hojas).
+
+### **Los factores a estudiar son:**
+
+### Luz: 2 niveles (Baja intensidad y Alta intensidad).
+
+### Riego: 2 niveles (Riego bajo y Riego alto).
+
+
+
+```{r, echo=TRUE, results='hide',warning=FALSE,message=FALSE}
+library(readxl)
+library(DT)
+library(tidyverse)
+library(mvnormtest)
+library(psych)
+library(heplots)
+library(MVN)
+library(dplyr)
+
+```
+
+```{r, echo=FALSE}
+
+datos7<- read_excel("data_factorial.xlsx")
+datos7$ALTURA<-as.numeric(datos7$ALTURA)
+datos7$LUZ<-as.factor(datos7$LUZ)
+datos7$RIEGO<-as.factor(datos7$RIEGO)
+datatable(datos7)
+```
+
+
+## **Análisis exploratorio **
+```{r,echo=FALSE,fig.align="center", warning=FALSE,message=FALSE,fig.width=6, fig.height=6}
+
+resumen_combinado1 <- datos7 %>%
+  group_by(LUZ, RIEGO) %>%
+  dplyr::summarise(
+    Media_Altura = mean(ALTURA, na.rm = TRUE), # Se añadió na.rm = TRUE para evitar NA
+    Mediana_Altura = median(ALTURA, na.rm = TRUE),
+    Desviacion_Altura = sd(ALTURA, na.rm = TRUE),
+    Q1_Altura = quantile(ALTURA, 0.25, na.rm = TRUE),
+    Q3_Altura = quantile(ALTURA, 0.75, na.rm = TRUE),
+    Min_Altura = min(ALTURA, na.rm = TRUE),
+    Max_Altura = max(ALTURA, na.rm = TRUE)
+  )
+datatable(resumen_combinado1)
+ 
+
+
+```
+
+### * Alta intensidad de luz y Alto riego conducen a las plantas más altas, mientras que las combinaciones con Baja intensidad y Bajo riego resultan en alturas más bajas.
+
+### * Las variaciones en la altura aumentan cuando se cambia el tipo de riego de bajo a alto, especialmente en los grupos de Alta intensidad.
+```{r,echo=FALSE,fig.align="center", warning=FALSE,message=FALSE,fig.width=6, fig.height=6}
+
+# Segundo boxplot para HOJAS
+par(cex.axis = 0.5)
+boxplot(HOJAS ~ LUZ * RIEGO, data = datos7,
+        main = "Boxplot de Número de Hojas por Luz y Riego",
+        xlab = "Condición de Luz y Riego", ylab = "Número de Hojas",
+        las = 0.5, col = c("red", "blue", "green", "yellow"),boxwex = 0.8)
+library(dplyr)
+
+# Calcular el resumen estadístico por combinación de LUZ y RIEGO
+resumen_combinado2 <- datos7 %>%
+  group_by( RIEGO) %>%
+  dplyr::summarise(
+    Media_Hojas = mean(HOJAS),
+    Mediana_Hojas = median(HOJAS),
+    Desviacion_Hojas = sd(HOJAS),
+    Q1_Hojas = quantile(HOJAS, 0.25),
+    Q3_Hojas = quantile(HOJAS, 0.75),
+    Min_Hojas = min(HOJAS),
+    Max_Hojas = max(HOJAS)
+  )
+
+# Ver el resumen
+datatable(resumen_combinado2)
+
+
+
+```
+
+### * Las plantas con Alta intensidad de luz tienen en promedio más hojas que las plantas con Baja intensidad, especialmente cuando se combina con Alto riego.
+
+### * Bajo riego tiende a limitar el número de hojas en comparación con las plantas que reciben Alto riego, lo que refleja que el riego tiene un efecto positivo en el crecimiento de las hojas.
+ 
+
+## **Valores atipicos multivariantes** 
+
+```{r, echo=FALSE,fig.align="center", warning=FALSE,message=FALSE}
+
+p7 <- cbind(datos7$LUZ,datos7$RIEGO,datos7$ALTURA,
+             datos7$HOJAS)
+
+p7 <- as.data.frame(p7)
+
+atipicos7 <- mvn(p7,multivariateOutlierMethod = "adj")
+```
+
+
+### Existen 7 valores atipicos multivariantes, sin embargo no se eliminaran debido a que consideramos que al hacerlo estaremos afectando el analisis por la poca cantidad de datos que tiene nuestro experimento factorial
+
+## **Supuesto de normalidad multivariada**
+
+### Hipótesis nula (H₀): Los datos siguen una distribución normal multivariada.
+
+### Hipótesis alternativa (H₁): Los datos no siguen una distribución normal multivariada.
+```{r, results='hide', warning=FALSE,message=FALSE}
+
+datosc = datos7
+datosc
+trat1 = datosc %>% filter(LUZ == "Baja intensidad", RIEGO == "Bajo") %>%
+  dplyr::select(ALTURA, HOJAS)
+trat2 = datosc %>% filter(LUZ == "Baja intensidad", RIEGO == "Alto") %>%
+  dplyr::select(ALTURA, HOJAS)
+trat3 = datosc %>% filter(LUZ == "Alta intensidad", RIEGO == "Bajo") %>%
+  dplyr::select(ALTURA, HOJAS)
+trat4 = datosc %>% filter(LUZ == "Alta intensidad", RIEGO == "Alto") %>%
+  dplyr::select(ALTURA, HOJAS)
+
+```
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+
+
+mshapiro.test(t(trat1))
+mshapiro.test(t(trat2))
+mshapiro.test(t(trat3))
+mshapiro.test(t(trat4))
+
+```
+
+### Dado que los p-valores en todos los casos son mayores que 0.05, no rechazamos la hipótesis nula (H₀), lo que indica que no hay evidencia suficiente para afirmar que los datos se desvían de una distribución normal multivariada. En otras palabras, los datos son compatibles con la hipótesis de normalidad multivariada y, por lo tanto, podemos asumir que las variables siguen una distribución normal conjunta.
+
+## **Supuesto de homogeneidad de matrices variancia covariancia**
+```{r,echo=FALSE,fig.align="center", warning=FALSE,message=FALSE}
+
+# Gráfico de elipses de confianza para cada grupo
+ggplot(datos7, aes(x = ALTURA, y = HOJAS, color = interaction(LUZ, RIEGO))) + 
+  geom_point() +
+  stat_ellipse(type = "norm") +
+  labs(title = "Elipses de Confianza de Altura y Hojas por Grupo",
+       x = "Altura",
+       y = "Número de Hojas") +
+  theme_minimal()
+```
+
+### El gráfico de elipses de confianza muestra la distribución de los datos para los diferentes grupos, y las elipses representando las áreas donde caen el 95% de las observaciones de cada grupo nos indican si las matrices de covarianza son homogéneas. Aunque las elipses para ciertos grupos presentan algunas diferencias en tamaño y forma, la superposición parcial entre ellas sugiere que existe una similitud en las distribuciones de los datos, lo que indica que probablemente sí hay homogeneidad en las matrices de covarianza.
+
+
+### Hipótesis nula (H₀): Las matrices de covarianza son iguales entre los grupos.
+
+### Hipótesis alternativa (H₁): Las matrices de covarianza no son iguales.
+
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+
+
+heplots::boxM(cbind(ALTURA, HOJAS) ~ LUZ * RIEGO, data = datos7)
+```
+### Dado que el p-valor = 0.6168 es mayor que 0.05, no rechazamos la hipótesis nula (H₀). Esto implica que no hay evidencia suficiente para afirmar que las matrices de covarianza son diferentes entre los grupos. En otras palabras, los datos cumplen con el supuesto de homogeneidad de matrices de covarianza, lo que significa que las matrices de covarianza para los distintos grupos son similares.
+ 
+
+
+ 
+
+### **Supuesto de variables dependientes correlacionadas**
+
+### H₀: Las variables no están correlacionadas (la matriz de correlaciones es la identidad).
+
+### H₁: Sí hay correlación entre las variables (la matriz no es identidad).
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+
+datos7c=datos7[-1:-2]
+options(scipen = 0)
+cortest.bartlett(cor(datos7c), n = nrow(datos7c))
+
+```
+
+
+### Como el p-valor < 0.05, rechazamos H₀. Un valor p bajo nos muestra que la probabilidad de que la matriz de correlación sea la identidad (sin correlación) es extremadamente baja. Esto confirma que las variables están correlacionadas y que la matriz de correlación observada es significativamente diferente de la matriz identidad
+
+### Durante este analisis se comprobo los suspuestos que debe tener nuestro experimento antes de realizar un manova, esto se pudo comprobar en cada sección, debido a lo anterior ahora se procede a hacer el manova y se descompone la matriz para hallar la suma de cuadrdaos de cada factor y su interaccion(FLUZ,FRIEGO,FLUZRIEGO), la suma de cuadrados del error(W) y la suma de cuadrados total(T), además hallaremos la variabilidad explicada por el modelo(eta2)
+
+## **Determinacion de la matriz residual y las matrices factoriales**
+
+
+```{r echo=TRUE, warning=FALSE,message=FALSE}
+
+modelo = manova(cbind(ALTURA, HOJAS) ~ LUZ *RIEGO, data = datos7)
+Matrices = summary(modelo)$SS
+FLUZ = Matrices$LUZ
+FRIEGO = Matrices$RIEGO
+FLUZRIEGO = Matrices$`LUZ:RIEGO`
+W = Matrices$Residuals
+T = FLUZ + FRIEGO+ FLUZRIEGO + W
+eta2 = 1 - det(W)/det(T)
+
+```
+
+```{r echo=TRUE,warning=FALSE,message=FALSE}
+FLUZ 
+
+```
+### El efecto de la luz en las plantas tiene una suma de cuadrados de 294.1445 para Altura y 186.050 para Número de Hojas. Esto indica que Luz tiene un efecto significativo sobre las plantas, ya que está explicando una gran proporción de la variabilidad
+
+
+```{r echo=TRUE,warning=FALSE,message=FALSE}
+FRIEGO
+
+```
+### El riego tiene una suma de cuadrados de 106.2605 para Altura y 84.050 para Número de Hojas, lo que indica que el riego también tiene un efecto significativo, pero menor que el de la luz.
+```{r echo=TRUE,warning=FALSE,message=FALSE}
+
+FLUZRIEGO
+
+```
+### La interacción entre Luz y Riego tiene una suma de cuadrados de 3.4445 para Altura y 0.450 para Número de Hojas, lo que sugiere que aunque hay una interacción entre Luz y Riego, el efecto no es tan fuerte como los efectos individuales de estos factores.
+```{r echo=TRUE,warning=FALSE,message=FALSE}
+
+W
+
+```
+### El error (residuos) tiene una suma de cuadrados de 6.396 para Altura y 16.00 para Número de Hojas, lo que indica que la variabilidad no explicada por el modelo es relativamente baja.
+```{r echo=TRUE,warning=FALSE,message=FALSE}
+
+T 
+
+```
+### La variabilidad total para Altura es de 410.2455 y para Número de Hojas es de 286.550, lo que indica la magnitud de la variabilidad presente en los datos.
+```{r echo=TRUE,warning=FALSE,message=FALSE}
+eta2
+```
+### El 99.3% de la variabilidad conjunta en ALTURA y HOJAS es explicada por LUZ, RIEGO y su interacción.
+
+##**Prueba de hipotesis del modelo**
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+
+summary(modelo, test = "Pillai")
+
+
+```
+
+### * Los tres efectos principales (LUZ, RIEGO y LUZ:RIEGO) tienen un efecto ### estadísticamente significativo sobre las variables dependientes en este análisis.
+
+### * LUZ y RIEGO por separado afectan el crecimiento de las plantas (ALTURA y HOJAS), y su interacción también tiene un efecto significativo. Esto significa que la relación entre estos dos factores debe considerarse cuidadosamente, ya que su combinación influye de manera significativa en el crecimiento de las plantas.
+
+
+
+

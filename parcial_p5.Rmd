@@ -1,0 +1,306 @@
+---
+title: "Parcial5"
+author: "GRUPO 5"
+date: "2025-05-03"
+output: html_document
+---
+
+```{r message=FALSE,results='hide', echo=FALSE, warning=FALSE,}
+library(readr)
+library(psych)
+# Cargar los datos
+Ya <- read.delim("abalone.data", 
+                 col.names = c("Sexo", "Longitud", "Diametro", 
+                               "Altura", "PesoE", "PesoD", "PesoV", 
+                               "PesoC", "Anillos"), sep = ",")
+
+# Ver los primeros registros
+
+
+# Crear la variable 'Division' basada en 'Anillos'
+Ya$Division <- factor(Ya$Anillos, 
+                      levels = c(1:3, 4:8, 9:13, 14:28, 29), 
+                      labels = c(rep('cria', 3), rep('joven', 5), 
+                                 rep('adulto', 5), rep('longevo', 15), 'longevo'))
+
+# Ver los resultados de 'Division'
+Ya<-Ya[,-9]
+Ya$Sexo<-as.factor(Ya$Sexo)
+Ya$Division<-as.factor(Ya$Division)
+
+knitr::kable(Ya)
+```
+## **Analisis descriptivo**
+
+El conjunto de datos contiene información de 4176 moluscos criados por una empresa española en La Coruña, registrados a través de 9 variables, tanto numéricas como categóricas, descritas a continuación:
+
+* Sexo:Indica el sexo del molusco.
+
+* M: Macho
+
+* F: Hembra
+
+* I: Bebé (moluscos jóvenes)
+
+* Longitud:Medida de la concha más larga del molusco, en milímetros.
+
+* Diámetro:Medida perpendicular a la longitud de la concha, en milímetros.
+
+* Altura:Medida del caparazón con carne incluida, en milímetros.
+
+* PesoE:
+Peso total del molusco (concha y carne), en gramos.
+
+* PesoD:
+Peso solo de la carne del molusco (sin la concha), en gramos.
+
+* PesoV:
+Peso de las vísceras del molusco (parte interna), en gramos.
+
+* PesoC:
+Peso de la concha seca del molusco, en gramos.
+
+* Division: Etapa de vida a la que corresponde la cantidad de anillos que presenta el molusco
+
+
+
+
+## **Análisis grafico**
+```{r,echo=FALSE,fig.align="center", warning=FALSE,message=FALSE,fig.width=6, fig.height=6}
+
+#View(Ya,show.frq=T,show.prc=T,show.na=T)
+library(ggplot2)
+
+library(ggplot2)
+
+ggplot(Ya, aes(x = Sexo, y = Longitud, fill = Sexo)) +
+  geom_boxplot() +
+  labs(title = "Distribución de Longitud por Sexo", x = "Sexo", y = "Longitud (mm)") +
+  theme_minimal()
+
+ggplot(Ya, aes(x = as.factor(Division), y = PesoE, fill = as.factor(Division))) +
+  geom_boxplot() +
+  labs(title = "Peso Total por Edad (Division)", x = "Edad (Division)", y = "Peso Total (gramos)") +
+  theme_minimal()
+
+
+
+```
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+library(FactoMineR)
+library(factoextra)
+library(missMDA)
+library(readr)
+
+```
+
+
+## **Correlacion**
+
+Antes de realizar el analisis factorial para datos mixtos, debemos comprobar que las variablesnumericas sean interdependientes, aunque esto no es necesario, nuestro trabajo considera que es importante mostrar la correlacion existente.Esto lo haremos solo mediante una grafica
+```{r message=FALSE, warning=FALSE,echo=FALSE}
+library(dplyr)
+Ya_numeric <- Ya %>% select_if(is.numeric)
+
+# Ahora, calcula la correlación
+correlation_matrix <- cor(Ya_numeric)
+cor.plot(correlation_matrix,
+         main="Mapa de Calor",
+         diag=T,
+         show.legend = T, 
+         numbers=F, 
+         upper=F)
+
+```
+
+Como se puede observar las variables numericas estan fuertemente correlacionadas de forma positiva
+
+
+## **Estandarización**
+Ahora porcedemos a hacer una estandarizaciòn debido a que contamos con variables con distintas unidades y con rangos diferentes
+```{r echo=FALSE}
+# Lista de variables cuantitativas relacionadas con los moluscos
+quantitative_vars_moluscos <- c("Longitud", "Diametro", "Altura", "PesoE", "PesoD", "PesoV", "PesoC")
+
+# Estandarizar solo las variables cuantitativas de los moluscos
+Ya[quantitative_vars_moluscos] <- scale(Ya[quantitative_vars_moluscos])
+
+# Verifica las primeras filas del dataframe estandarizado
+head(Ya)
+
+```
+
+
+## **ANALISIS FACTORIAL MIXTO**
+Como ya vimos que existe interdependencia netre variables y ya se estandarizo, ahora podemos aplicar un analisis factorial para datos mixtos , ya que contamos con datos tanto numericos como categoricos
+```{r echo=FALSE}
+famd_result_ya <- FAMD(Ya,ncp=5 , graph =F)
+# Visualizar los resultados
+
+
+```
+
+
+<center>
+![Descripción de la imagen](C:/Users/Khatia/Downloads/imagen1.png){height=50%, width=60%}</center>
+
+<center>
+![Descripción de la imagen](C:/Users/Khatia/Downloads/imagen2.png){height=30%, width=40%}</center>
+
+<center>![Descripción de la imagen](C:/Users/Khatia/Downloads/imagen3.png){height=30%, width=40%}</center>
+
+
+## **AUTOVALORES**
+
+```{r echo=FALSE}
+famd_pre_result_ya <- Ya %>% 
+  FAMD( ncp=5 ,graph =F)
+
+eigenvalues <- famd_pre_result_ya %>% get_eigenvalue()
+
+eigenvalues
+
+```
+
+La Dim.1 captura el 59.66% de la variabilidad, y juntas las primeras tres dimensiones explican el 76.73345 de los datos, ademas se suele optar por el numero de dimensiones que cumplan con un porcentaje considerable que explique la varianza de los datos o cuando los eingenvalores sean mayor a 1 con esto podemos reducir los datos a pocas dimensiones sin perder mucha información, lo cual facilita el análisis y la visualización.
+
+## **GRAFICA COMPLEMENTARIA**
+```{r echo=FALSE}
+famd_pre_result_ya %>% fviz_screeplot(addlabels = TRUE, ylim = c(0, 80),
+                                   barfill="white", barcolor ="darkblue",
+                                   linecolor ="red")
+
+
+```
+
+## **Análisis de las Variables: Coordenadas, Calidad de Representación y Contribución a los Componentes**
+```{r echo=FALSE}
+var_analysis <- famd_pre_result_ya %>% get_famd_var()
+var_analysis$coord
+var_analysis$cos2
+var_analysis$contrib
+
+```
+
+**coordenadas**:
+
+* Longitud tiene un valor alto en Dim.1 (0.9253), lo que indica que la variable Longitud contribuye fuertemente a la primera dimensión.
+
+* Sexo tiene un valor más bajo en Dim.1 (0.4183), lo que sugiere que la variable Sexo tiene una contribución más pequeña en esta dimensión.
+
+**cos2**:
+
+* La variable PesoD tiene un valor alto de cos2 en Dim.1 (0.7703), lo que indica que está bien representada por la primera dimensión. La representación en Dim.2 y Dim.3 es muy baja, lo que sugiere que PesoD no se ajusta bien a estas dimensiones.
+
+
+**contrib**:
+
+* Altura tiene una importante contribución en Dim.1 (10.74), lo que muestra que esta variable es clave para la primera dimensión. Sin embargo, su contribución en Dim.2 (0.42) es mucho menor, lo que indica que Altura no es tan relevante para esa dimensión
+
+## **Grafica complemnetaria**
+```{r echo=FALSE}
+famd_pre_result_ya %>% fviz_contrib(choice = "var", axes=1,)
+```
+
+Con la grafica podemos ver que variables contribuyen mas a las primera dimension
+
+## **variables cuantitativas**
+
+```{r echo=FALSE}
+var_analysis_quanti <- famd_pre_result_ya %>% get_famd_var(element = "quanti.var")
+var_analysis_quanti$coord
+var_analysis_quanti$cos2
+var_analysis_quanti$contrib
+
+```
+
+**Algunas interpretaciones:**
+
+**coord**
+
+* Longitud:
+
+* En Dim.1, tiene un valor alto de 0.9619, lo que indica que tiene una fuerte contribución o asociación con la primera dimensión.
+
+* En Dim.2 y Dim.3, sus valores son bajos, lo que significa que Longitud está principalmente representada en la Dim.1, y su influencia sobre las dimensiones posteriores es muy pequeña.
+
+**cos2**
+
+* PesoD (Peso de la cáscara):
+
+* En Dim.1, tiene un valor de 0.8777, lo que indica que esta variable está bien representada en la primera dimensión, pero su calidad disminuye en las dimensiones posteriores.
+
+**contrib**
+
+* Longitud:
+
+* En Dim.1, tiene una contribución de 12.93, lo que significa que "Longitud" explica una porción significativa de la varianza en la primera dimensión.
+
+* En Dim.2 y Dim.3, su contribución es muy baja, lo que refuerza la idea de que "Longitud" es más importante en la Dim.1.
+
+
+```{r echo=FALSE}
+famd_pre_result_ya %>% 
+  fviz_famd_var(choice = "quanti.var", col.var = "contrib",
+                gradient.cols = c("red","yellow","green"))
+
+```
+
+
+* Las variables PesoC, PesoD y Altura tienen un mayor impacto en Dim.1.
+
+* Las variables de peso (PesoC y PesoD) tienen contribuciones importantes pero moderadas a Dim.1, mientras que Altura tiene una contribución destacada.
+
+* Dim.1 es la principal dimensión y explica la mayor parte de la variabilidad de los datos.
+
+
+## **VARIABLES CUALITATIVAS**
+
+```{r echo=FALSE}
+var_analysis_quali <- famd_pre_result_ya %>% get_famd_var(element = "quali.var")
+var_analysis_quali$coord
+# v.test: pruebas Z. Si el valor es mayor en valor absoluto a 1.96 entonces
+# la categoria aporta a la dimension (es significativa)
+
+var_analysis_quali$v.test
+famd_pre_result_ya %>% 
+ fviz_famd_var("quali.var", col.var = "contrib",
+               gradient.cols = c("red","yellow","green"))
+
+```
+**Interpretaciones**:
+
+**para coord**
+
+* cria (Rango de Edad: Cría): Con un valor de -6.3431308, la categoría "cría" tiene una contribución negativa significativa en la Dim.1, lo que implica que los individuos jóvenes tienen una relación opuesta a la principal variabilidad de la muestra.
+
+**para el test**
+
+* F (Sexo: Femenino): Con un valor de 22.91, este valor es alto, lo que indica que la categoría "Femenino" tiene una contribución significativa en la Dimensión 1.
+
+* I (Sexo: Bebé): Tiene un valor de -41.59, lo que también sugiere una contribución significativa pero en sentido opuesto a la categoría "Femenino". La categoría "Bebé" tiene una fuerte diferencia en la Dimensión 1 en comparación con las otras categorías.
+
+## **Analisis de individuos**
+
+```{r echo=F}
+ind_analysis <- famd_pre_result_ya %>% get_famd_ind()
+ind_analysis$coord[1:5,] 
+ind_analysis$contrib[1:5,]
+ind_analysis$cos2[1:5,]
+```
+
+**interpretacion**
+
+
+**coord**
+
+* El individuo 1 tiene una fuerte carga negativa en Dim.1(-3.36), lo que sugiere que está relacionado con características que afectan esa dimensión, como el tamaño o peso. En Dim.2(-0.44)y Dim.3(0.11), tiene valores bajos, lo que significa que su posición está principalmente influenciada por Dim.1.
+
+**cos2**
+
+*  El individuo 2 tiene un cos2 muy bajo en Dim.1 (2.71e-05)y Dim.2( 0.000016), lo que sugiere que estas dimensiones no están explicando bien su posición. Sin embargo, tiene un valor ligeramente más alto en Dim.3(0.0021), lo que significa que esta dimensión puede estar mejor representando sus características.
+
+
+**contrib**
+
+* El individuo 1 tiene una contribución muy alta en Dim.1(12.93), lo que indica que está fuertemente influenciado por las variables asociadas con esta dimensión (por ejemplo, "Longitud" o "PesoE"). En Dim.2 y Dim.3, su contribución es baja, lo que sugiere que esas dimensiones tienen menor relevancia para este individuo.

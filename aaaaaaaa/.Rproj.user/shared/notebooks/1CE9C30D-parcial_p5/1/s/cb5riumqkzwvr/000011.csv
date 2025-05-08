@@ -1,0 +1,5 @@
+"0","library(FactoMineR)"
+"0","library(factoextra)"
+"0","library(missMDA)"
+"2","Error en library(missMDA): no hay paquete llamado ‘missMDA’
+"

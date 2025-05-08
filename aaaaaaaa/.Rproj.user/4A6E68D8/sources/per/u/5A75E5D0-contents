@@ -1,0 +1,99 @@
+##################
+### Pregunta 1 ###
+##################
+
+# Definicion de variable
+# Variable dependiente: Y = Produccion de los principales cultivos agricolas (Miles TM)
+# Variable predictora: 
+#   X1 = Cebollas
+#   X2 = Mandarina
+#   X3 = Platano
+#   X4 = Ajo
+#   X5 = Cafe
+#   X6 = Esparrago
+#   X7 = Cacao
+#   X8 = Mango
+
+# Componentes del MLG
+# Componente aleatorio: Yi ~ Normal(u, o2), E(Yi) = u
+# Componente sistematico : ni = X'B_ = B0 + B1X1 + B2X2 + B3X3 + B4X4 + B5X5 + B6X6 + B7X7 + B8X8
+# Funcion de enlace: Identidad
+#   E(Yi) = ui = ni = X'iB_ = ...
+# Modelos de regresion lineal multiple:
+#   Yi = B0 + B1X1 + B2X2 + B3X3 + B4X4 + B5X5 + B6X6 + B7X7 + B8X8
+
+##################
+### Pregunta 1 ###
+##################
+
+datos <- read.csv("MLII_2025_01_PC2_Datos01.csv", header = T, sep = ";"); datos
+attach(datos)
+X = model.matrix (Y1_Produccion~ . , datos) [, -1] 
+y = datos$Y1_Produccion 
+n=dim(X)[1];p=dim(X)[2]
+
+Modelo1 <- lm(Y1_Produccion ~ .,data = datos)
+summary(Modelo1)
+
+# Examinar los factores de inflación de variancia (VIF) 
+library(faraway)
+vif(Modelo1)
+
+#  Calcular el índice k por predictor 
+XX=t(X)%*%X 
+Lambda=eigen(XX)$values
+for (i in 1:p) {
+  cat("kj: ",i, " = ", max(Lambda)/Lambda[i],"\n") 
+} 
+
+##################
+### Pregunta 2 ###
+##################
+
+
+Modelo2 <- lm(Y1_Produccion~X1_Cebolla+X3_Platano+X4_Ajo+X5_Cafe+X6_Esparrago+X8_Mango,datos)
+summary(Modelo2)
+coef(Modelo2)
+vif(Modelo2)
+R2=summary(Modelo1)$r.squared; R2
+
+
+##################
+### Pregunta 3 ###
+##################
+
+library(leaps)
+Modelo_B <- regsubsets(Y1_Produccion~., datos, nvmax = 15, method = "backward")
+ID_B = which.max(summary(Modelo_B)$adjr2);ID_B
+round(coef(object = Modelo_B, id = ID_B),3)
+Modelo_F <- regsubsets(Y1_Produccion~., datos, nvmax = 15, method = "forward")
+ID_F = which.max(summary(Modelo_F)$adjr2);ID_F
+round(coef(object = Modelo_F, id = ID_F),3)
+
+
+##################
+### Pregunta 4 ###
+##################
+?cv.glmnet
+
+X = model.matrix (Y1_Produccion~ . , datos) [, -1] 
+y = datos$Y1_Produccion 
+
+library(glmnet)
+set.seed(1000)
+cv.ridge = cv.glmnet(X,y,alpha = 0, nfolds = 10, type.measure = "mse")
+cv.ridge$lambda.1se
+Modelo_R_Final = glmnet(X,y,alpha = 0, lambda = cv.ridge$lambda.1se)
+round(coef(Modelo_R_Final),3)
+
+set.seed(1000)
+cv.lasso = cv.glmnet(X,y,alpha = 1, nfolds = 10, type.measure = "mse")
+cv.lasso$lambda.1se
+Modelo_L_Final = glmnet(X,y,alpha = 1, lambda = cv.lasso$lambda.1se)
+round(coef(Modelo_L_Final),3)
+
+
+
+
+B[230:350,]
+

@@ -1,0 +1,147 @@
+# Practica dirigida 2
+# Problema 1
+
+# pregunta C
+# Entrada de datos 
+Datos=read.table("MLII_PD_Clase_02_Datos01.csv",header=T,sep=";")
+attach(Datos) 
+X_Datos=as.matrix(Datos) 
+n=dim(X_Datos)[1]; p=dim(X_Datos)[2] 
+X=X_Datos[,1:p-1]  
+y=X_Datos[,p:p] 
+p=p-1 
+W<-matrix(0,nrow=n,ncol=n) 
+
+# Valores iniciales 
+b<-c(1.6, -0.2, -0.1, 0.02)
+# Inicio de las iteraciones 
+m=5 
+for(i in 0:m)
+{
+  cat("Iteracion = ",i," Coeficientes estimados:   ",b,"\n")
+  # Estimacion MV con el algoritmo Scoring 
+  Xb=X%*%b
+  wii<-exp(Xb) 
+  diag(W)<-wii 
+  z<-Xb+y*exp(-(Xb))-1 
+  b<-solve(t(X)%*%W%*%X)%*%(t(X)%*%W%*%z) 
+}
+
+# pregunta D
+# Vector de coeficientes estimados 
+b 
+
+# Ecuaciones normales 
+XWX=t(X)%*%W%*%X; XWX 
+XWz=t(X)%*%W%*%z; XWz
+
+# Pregunta E
+# Intervalos de confianza de los coeficientes 
+Cov_B=solve(t(X)%*%W%*%X); Cov_B
+
+# Verificando con la librería glm 
+Modelo1<-glm(y~X[,-1],family=poisson(link=log)) 
+summary(Modelo1)
+
+# Intervalo de confianza 
+NC=0.95 
+confint.default(Modelo1, level=NC)
+
+
+# Problema 2
+# Pregunta C
+# Entrada de datos 
+y<-c(10,12,14,18,20,22,26,28,10,9,8,5,6,5,4,3) 
+n<-c(28,25,24,28,32,34,38,42,28,25,24,28,32,34,38,42) 
+yy<-cbind(y,n-y) 
+X<-cbind(X0=c(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1), 
+         X1=c(1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0),
+         X2=c(2,4,8,12,16,20,24,30,2,4,8,12,16,20 ,24,30)) 
+nn=dim(X)[1]; p=dim(X)[2] 
+W<-matrix(0,nrow=nn,ncol=nn) 
+# Valores iniciales 
+b<-c(-1.3, 1.7, 0.004) 
+# Inicio de las iteraciones 
+m=5 
+for(i in 0:m) 
+{ 
+  cat("Iteracion = ",i," Coeficientes estimados:   ",b,"\n") 
+  #  Estimacion MV con el algoritmo Scoring 
+  Xb=X%*%b 
+  Pi=exp(Xb)/(1+exp(Xb)) 
+  wii<-n*Pi*(1-Pi) 
+  diag(W)<-wii 
+  z<-Xb+(y-n*Pi)/(n*Pi*(1-Pi)) 
+  b<-solve(t(X)%*%W%*%X)%*%(t(X)%*%W%*%z) 
+}
+
+# Pregunta D
+# Vector de coeficientes estimados 
+b 
+
+#  Ecuaciones normales 
+XWX=t(X)%*%W%*%X; XWX 
+
+# Pregunta E
+# Intervalos de confianza de los coeficientes 
+Cov_B=solve(t(X)%*%W%*%X); Cov_B
+
+# Verificando con la librería glm 
+Modelo1<- glm(yy~ X[,-1],family=binomial(link=logit)) 
+summary(Modelo1) 
+
+# Intervalo de confianza 
+NC=0.95 
+confint.default(Modelo1, level=NC) 
+
+# Problema 3
+# Pregunta B
+# Entrada de datos 
+y<-c(1016, 1076, 1291, 1253, 1379, 872, 1247, 1230, 802, 1002) 
+X<-cbind(X0=c(1,1,1,1,1,1,1,1,1,1),
+         X1=c(106,72,76, 81,101,93,86,44,107,75), 
+         X2=c(478,355,239,257,431,279,378,265,231,307), 
+         X3=c(199,153,167,189,157,188,162,200,188,161)) 
+n=dim(X)[1]; p=dim(X)[2] 
+W<-matrix(0,nrow=n,ncol=n) 
+# Valores iniciales 
+b<-c(1750.0, -4.9, 0.7, -2.6) 
+# Inicio de las iteraciones 
+m=5 
+for(i in 0:m) 
+{ 
+  cat("Iteracion = ",i," Coeficientes estimados:   ",b,"\n") 
+  # Estimacion MV con el algoritmo Scoring 
+  z<-y
+  b<-solve(t(X)%*%X)%*%(t(X)%*%z) 
+} 
+
+# Pregunta C
+# Vector de coeficientes estimados 
+b
+
+# Pregunta D
+# Ecuaciones normales 
+XWX=t(X)%*%X; XWX 
+XWz=t(X)%*%z; XWz 
+
+# Pregunta E
+# Intervalos de confianza de los coeficientes 
+Var=(1/(n-p))*(t(y-X%*%b)%*%(y-X%*%b)) 
+Cov_B=Var[1,1]*solve(t(X)%*%X); Cov_B
+NC=0.95 
+for(i in 1:p)
+{ 
+  LI=b[i] - qnorm(1-((1-NC)/2))*sqrt(Cov_B[i,i]) 
+  LS=b[i] + qnorm(1-((1-NC)/2))*sqrt(Cov_B[i,i]) 
+  cat("IC Coeficiente :  b",i-1," LI = ",LI, "   LS = ",LS,"\n") 
+} 
+
+# Verificando con la librería glm 
+Modelo1<-glm(y~X[,-1],family=gaussian(link=identity)) 
+summary(Modelo1) 
+
+# Intervalo de confianza 
+NC=0.95 
+confint.default(Modelo1, level=NC) 
+

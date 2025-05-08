@@ -1,0 +1,3 @@
+"0","famd_pre_result_ya %>% fviz_screeplot(addlabels = TRUE, ylim = c(0, 80),"
+"0","                                   barfill=""white"", barcolor =""darkblue"","
+"0","                                   linecolor =""red"")"
